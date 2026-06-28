@@ -737,25 +737,7 @@
         ctx.fill();
       });
 
-      nodes.forEach(node => {
-        if (node.scale < 0.01) return;
-        const hue = getXColor(node.x), radius = node.radius * node.scale;
-        const breath = (Math.sin(time * 2.5 + node.phase) + 1) * 0.5; 
-        const nodeAudio = node.kind === 'bass' ? motion.bass : node.kind === 'vocal' ? motion.vocal : motion.treble;
-        const currentRadiusMult = CONFIG.nodeGlowBaseMult + (nodeAudio * CONFIG.nodeGlowAudioBoost) - (breath * CONFIG.nodeGlowBreathRange);
 
-        const glow = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, Math.max(0, radius * currentRadiusMult));
-        const glowAlpha = (0.2 + node.activity * 0.2 + breakdownIntensity * 0.05) * node.scale;
-        glow.addColorStop(0, `hsla(${hue}, 100%, ${breakdownIntensity > 0.65 ? 58 : 62}%, ${glowAlpha})`);
-        glow.addColorStop(0.65, `hsla(${hue}, 100%, ${breakdownIntensity > 0.65 ? 56 : 62}%, ${glowAlpha * 0.36})`);
-        glow.addColorStop(1, `hsla(${hue}, 100%, 62%, 0)`);
-        
-        ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(node.x, node.y, Math.max(0, radius * currentRadiusMult), 0, Math.PI * 2); ctx.fill();
-
-        ctx.globalAlpha = (0.78 + node.activity * 0.18) * node.scale;
-        ctx.beginPath(); ctx.arc(node.x, node.y, radius, 0, Math.PI * 2); ctx.fillStyle = `hsla(${hue}, 18%, 96%, 0.98)`; ctx.fill();
-        ctx.beginPath(); ctx.arc(node.x - radius * 0.14, node.y - radius * 0.14, radius * 0.34, 0, Math.PI * 2); ctx.fillStyle = `hsla(${hue}, 100%, 94%, 0.8)`; ctx.fill();
-      });
 
       ctx.globalAlpha = 1;
       particles.forEach(p => {
@@ -790,7 +772,25 @@
       vignette.addColorStop(0.64, 'rgba(0,0,0,0)');
       vignette.addColorStop(1, `rgba(0,0,0,${0.44 + breakdownIntensity * 0.06})`);
       ctx.globalCompositeOperation = 'screen'; ctx.fillStyle = vignette; ctx.fillRect(0, 0, width, height);
+      nodes.forEach(node => {
+        if (node.scale < 0.01) return;
+        const hue = getXColor(node.x), radius = node.radius * node.scale;
+        const breath = (Math.sin(time * 2.5 + node.phase) + 1) * 0.5; 
+        const nodeAudio = node.kind === 'bass' ? motion.bass : node.kind === 'vocal' ? motion.vocal : motion.treble;
+        const currentRadiusMult = CONFIG.nodeGlowBaseMult + (nodeAudio * CONFIG.nodeGlowAudioBoost) - (breath * CONFIG.nodeGlowBreathRange);
 
+        const glow = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, Math.max(0, radius * currentRadiusMult));
+        const glowAlpha = (0.2 + node.activity * 0.2 + breakdownIntensity * 0.05) * node.scale;
+        glow.addColorStop(0, `hsla(${hue}, 100%, ${breakdownIntensity > 0.65 ? 58 : 62}%, ${glowAlpha})`);
+        glow.addColorStop(0.65, `hsla(${hue}, 100%, ${breakdownIntensity > 0.65 ? 56 : 62}%, ${glowAlpha * 0.36})`);
+        glow.addColorStop(1, `hsla(${hue}, 100%, 62%, 0)`);
+        
+        ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(node.x, node.y, Math.max(0, radius * currentRadiusMult), 0, Math.PI * 2); ctx.fill();
+
+        ctx.globalAlpha = (0.78 + node.activity * 0.18) * node.scale;
+        ctx.beginPath(); ctx.arc(node.x, node.y, radius, 0, Math.PI * 2); ctx.fillStyle = `hsla(${hue}, 18%, 96%, 0.98)`; ctx.fill();
+        ctx.beginPath(); ctx.arc(node.x - radius * 0.14, node.y - radius * 0.14, radius * 0.34, 0, Math.PI * 2); ctx.fillStyle = `hsla(${hue}, 100%, 94%, 0.8)`; ctx.fill();
+      });
       ctx.restore();
     }
 
