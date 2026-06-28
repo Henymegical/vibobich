@@ -243,8 +243,8 @@
       nodeGlowAudioBoost: 2.2,
       nodeGlowBreathRange: 0.6,
 
-      linkBaseCount: 50,            
-      linkAudioBoost: 200,           
+      linkBaseCount: 60,            
+      linkAudioBoost: 400,           
       linkSurvivalThreshold: 0.012, 
       linkScoreEnergyWeight: 0.65,  
       linkScoreProximity: 0.15,     
@@ -312,6 +312,18 @@
 
     const clamp01 = v => Math.max(0, Math.min(1, v));
     const mix = (a, b, t) => a + (b - a) * t;
+    const smoothstep = (edge0, edge1, x) => {
+      const t = clamp01((x - edge0) / (edge1 - edge0 || 1));
+      return t * t * (3 - 2 * t);
+    };
+    const hash01 = (str) => {
+      let h = 2166136261;
+      for (let i = 0; i < str.length; i++) {
+        h ^= str.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+      }
+      return ((h >>> 0) % 1000000) / 1000000;
+    };
     const pairKey = (a, b) => {
       const ia = parseInt(a.id.split('-')[1], 10);
       const ib = parseInt(b.id.split('-')[1], 10);
@@ -325,17 +337,19 @@
       return baseHue * (1 - redMix) + 355 * redMix;
     }
 
-    function getLinkVisuals(a, b, strength, energy, scaleCombo) {
+    function getLinkVisuals(a, b, strength, energy, scaleCombo, whiteMask = 0) {
       const dist = Math.hypot(b.x - a.x, b.y - a.y) || 1;
       const maxDist = Math.hypot(width, height) * 0.65;
       const proximity = Math.max(0, 1 - dist / maxDist);
       const distanceWeight = Math.pow(proximity, 3.5); 
-      
+
+      const whiteBlend = smoothstep(0.82, 0.995, breakdownIntensity) * whiteMask;
       const alpha = Math.max(CONFIG.linkMinAlpha, distanceWeight * 0.95 + strength * 0.12 + energy * CONFIG.linkEnergyAlphaBoost) * scaleCombo;
-      
+      const boostedAlpha = alpha * (1 + whiteBlend * 0.55 + breakdownIntensity * 0.15);
+
       const hueA = getXColor(a.x);
       const hueB = getXColor(b.x);
-      
+
       let avgHue;
       if (Math.abs(hueA - hueB) > 180) {
         avgHue = (hueA + hueB + 360) / 2 % 360;
@@ -343,7 +357,7 @@
         avgHue = (hueA + hueB) / 2;
       }
 
-      return { alpha, hue: avgHue, proximity };
+      return { alpha: boostedAlpha, hue: avgHue, proximity, whiteBlend };
     }
 
     function getBandVolumeHz(array, lowHz, highHz) {
@@ -617,7 +631,8 @@
           const bendSeed = (node.phase + other.phase) * 0.5;
           
           let rec = linkMemory.get(key);
-          if (!rec) rec = { a: node, b: other, strength: score, usage: score * 0.35, age: 0, phase: Math.random() * Math.PI * 2, bendSeed, lastScore: score };
+          if (!rec) rec = { a: node, b: other, strength: score, usage: score * 0.35, age: 0, phase: Math.random() * Math.PI * 2, bendSeed, lastScore: score, whiteMask: hash01(key) < 0.5 ? 1 : 0 };
+          if (breakdownIntensity > 0.96) rec.whiteMask = hash01(key) < 0.5 ? 1 : 0;
           rec.a = node; rec.b = other; rec.strength = rec.strength * 0.90 + score * 0.10;
           rec.usage = rec.usage * 0.96 + (score > 0.12 ? 0.035 : 0.01);
           rec.age += 1; rec.lastScore = score;
@@ -785,6 +800,7 @@
     }
 
     function drawScene(motion) {
+
       const eqLift = motion.energy * 0.28 + motion.vocal * 0.12;
       const stereoShift = (motion.treble - motion.bass) * width * 0.03;
       const redDrop = Math.min(1, breakdownIntensity), redMix = redDrop * redDrop;
@@ -805,6 +821,8 @@
       }
 
       ctx.save();
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
       ctx.globalCompositeOperation = 'source-over';
       ctx.fillStyle = `rgba(${10 + redMix * 80}, ${2 + redMix * 6}, ${8 + redMix * 6}, ${0.26 + motion.energy * 0.08 + redMix * 0.12})`;
       ctx.fillRect(0, 0, width, height);
@@ -855,7 +873,7 @@
         ctx.fillStyle = burstGrad; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
       });
 
-      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalCompositeOperation = 'screen';
       if (flash > 0.01) {
         ctx.fillStyle = `rgba(${220 + redMix * 35}, ${20 + redMix * 25}, ${20 + redMix * 20}, ${flash * 0.14 + redMix * 0.08})`;
         ctx.fillRect(0, 0, width, height);
@@ -867,16 +885,49 @@
       links.forEach(link => {
         const scaleCombo = Math.min(link.a.scale, link.b.scale);
         if (scaleCombo < 0.05) return;
-        
-        const vis = getLinkVisuals(link.a, link.b, link.strength, motion.energy, scaleCombo);
-        
-        ctx.strokeStyle = `hsla(${vis.hue}, 100%, 72%, ${vis.alpha * 0.8})`;
-        ctx.lineWidth = (CONFIG.linkBaseWidth + vis.proximity * 0.3 + link.strength * 0.8 + motion.energy * CONFIG.linkEnergyWidthBoost + breakdownIntensity * 0.8) * scaleCombo;
-        
+
+        const vis = getLinkVisuals(link.a, link.b, link.strength, motion.energy, scaleCombo, link.whiteMask || 0);
+        const whiteGlow = vis.whiteBlend;
+        const linkWidth = (CONFIG.linkBaseWidth + vis.proximity * 0.3 + link.strength * 0.8 + motion.energy * CONFIG.linkEnergyWidthBoost + breakdownIntensity * 0.8) * scaleCombo;
+
+        const grad = ctx.createLinearGradient(link.a.x, link.a.y, link.b.x, link.b.y);
+        const edgeAlpha = Math.max(0.06, vis.alpha * (0.7 - whiteGlow * 0.18));
+        const whiteAlpha = Math.min(1, vis.alpha * (0.35 + whiteGlow * 1.05));
+        const paleHue = `hsla(${vis.hue}, 100%, ${78 + whiteGlow * 4}%, ${edgeAlpha})`;
+
+        grad.addColorStop(0, paleHue);
+        grad.addColorStop(0.42, whiteGlow > 0.001 ? `rgba(255,255,255,${whiteAlpha * 0.42})` : `hsla(${vis.hue}, 100%, 72%, ${vis.alpha * 0.6})`);
+        grad.addColorStop(0.5, whiteGlow > 0.001 ? `rgba(255,255,255,${whiteAlpha})` : `hsla(${vis.hue}, 100%, 72%, ${vis.alpha * 0.82})`);
+        grad.addColorStop(0.58, whiteGlow > 0.001 ? `rgba(255,255,255,${whiteAlpha * 0.42})` : `hsla(${vis.hue}, 100%, 72%, ${vis.alpha * 0.6})`);
+        grad.addColorStop(1, paleHue);
+
+        const baseWidth = linkWidth * (1 + whiteGlow * 0.32);
+
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = baseWidth * 1.05;
         ctx.beginPath();
         ctx.moveTo(link.a.x, link.a.y);
         ctx.quadraticCurveTo(link.cx, link.cy, link.b.x, link.b.y);
         ctx.stroke();
+
+        if (whiteGlow > 0.001) {
+          const whiteCore = ctx.createLinearGradient(link.a.x, link.a.y, link.b.x, link.b.y);
+          whiteCore.addColorStop(0, `rgba(255,255,255,0)`);
+          whiteCore.addColorStop(0.22, `rgba(255,255,255,${whiteAlpha * 0.34})`);
+          whiteCore.addColorStop(0.5, `rgba(255,255,255,${Math.min(1, whiteAlpha * 1.18)})`);
+          whiteCore.addColorStop(0.78, `rgba(255,255,255,${whiteAlpha * 0.34})`);
+          whiteCore.addColorStop(1, `rgba(255,255,255,0)`);
+
+          ctx.strokeStyle = whiteCore;
+          ctx.lineWidth = baseWidth * (0.78 + whiteGlow * 0.34);
+          ctx.beginPath();
+          ctx.moveTo(link.a.x, link.a.y);
+          ctx.quadraticCurveTo(link.cx, link.cy, link.b.x, link.b.y);
+          ctx.stroke();
+        }
+        ctx.restore();
       });
 
       // ИСПРАВЛЕНИЕ ЦВЕТОВ ЧАСТИЦ: снижена яркость до 72% и 68%, чтобы цвет не выгорал в белый
@@ -884,7 +935,7 @@
         if (!p.from || !p.to) return;
         ctx.beginPath();
         ctx.arc(p.x, p.y, 4 + motion.energy * 5.5 + motion.treble * 1.4, 0, Math.PI * 2);
-        ctx.fillStyle = `hsla(${p.hue}, 100%, 72%, ${p.linkAlpha * 1.6})`;
+        ctx.fillStyle = `hsla(${p.hue}, 100%, 72%, ${p.linkAlpha * 0.5})`;
         ctx.fill();
       });
 
@@ -892,9 +943,64 @@
 
       ctx.globalAlpha = 1;
       particles.forEach(p => {
-        if (!p.scale || p.scale < 0.1 || !p.from) return;
-        ctx.fillStyle = `hsla(${p.hue}, 100%, 68%, ${p.linkAlpha * 1.8})`;
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.r * p.scale, 0, Math.PI * 2); ctx.fill();
+          if (!p.scale || p.scale < 0.1 || !p.from) return;
+
+          // направление движения
+          const dx = p.to.x - p.from.x;
+          const dy = p.to.y - p.from.y;
+          const angle = Math.atan2(dy, dx);
+
+          const len = (1.0 + p.linkAlpha * 2) * p.scale;
+          const width = (0.2 + p.linkAlpha * 0.8) * p.scale;
+
+          ctx.save();
+
+          ctx.translate(p.x, p.y);
+          ctx.rotate(angle);
+
+          // плазменное свечение
+          const glow = ctx.createRadialGradient(
+              0,
+              0,
+              0,
+              0,
+              0,
+              len * 1.5
+          );
+
+          glow.addColorStop(0.0, `hsla(${p.hue},100%,96%,${Math.min(1,p.linkAlpha*3.8)})`);
+          glow.addColorStop(0.35, `hsla(${p.hue},100%,78%,${Math.min(1,p.linkAlpha*2.1)})`);
+          glow.addColorStop(1.0, `hsla(${p.hue},100%,60%,0)`);
+
+          ctx.fillStyle = glow;
+          ctx.beginPath();
+          ctx.arc(0,0,len*0.8,0,Math.PI*2);
+          ctx.fill();
+
+          // вытянутый энергетический сгусток
+          const grad = ctx.createLinearGradient(-len,0,len,0);
+
+          grad.addColorStop(0,"rgba(255,255,255,0)");
+          grad.addColorStop(0.18,`hsla(${p.hue},100%,74%,${p.linkAlpha*0.7})`);
+          grad.addColorStop(0.50,"rgba(255,255,255,0.98)");
+          grad.addColorStop(0.82,`hsla(${p.hue},100%,74%,${p.linkAlpha*0.7})`);
+          grad.addColorStop(1,"rgba(255,255,255,0)");
+
+          ctx.fillStyle = grad;
+
+          ctx.beginPath();
+          ctx.ellipse(
+              0,
+              0,
+              len,
+              width,
+              0,
+              0,
+              Math.PI*2
+          );
+          ctx.fill();
+
+          ctx.restore();
       });
 
       if (floatingTexts.length > 0) {
