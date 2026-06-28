@@ -49,54 +49,186 @@
 
     .btn {
       position: absolute;
-      inset: 0;
+      top: 18px;
+      left: 18px;
       z-index: 3;
-      margin: auto;
-      width: fit-content;
-      height: fit-content;
-      padding: 14px 22px;
-      border: 1px solid rgba(166, 210, 255, 0.26);
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
       border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.08);
       cursor: pointer;
-      font-size: 15px;
+      font-size: 11px;
       font-weight: 700;
-      letter-spacing: 0.02em;
-      color: #f2f8ff;
-      background: linear-gradient(135deg, rgba(16,32,66,0.92), rgba(50,132,255,0.96));
-      box-shadow: 0 0 34px rgba(67, 139, 255, 0.28), inset 0 0 18px rgba(255,255,255,0.16);
-      transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: rgba(240,247,255,0.92);
+      background: rgba(5, 8, 14, 0.34);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
       backdrop-filter: blur(10px);
+      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, opacity 160ms ease;
     }
     .btn:hover {
       transform: translateY(-1px);
-      box-shadow: 0 0 44px rgba(90, 160, 255, 0.44), inset 0 0 18px rgba(255,255,255,0.18);
+      border-color: rgba(190,220,255,0.16);
+      background: rgba(9, 13, 22, 0.44);
     }
     .btn:active { transform: scale(0.985); }
-    .btn:disabled { opacity: 0.86; cursor: wait; }
-
-    .hint {
-      position: absolute;
-      left: 20px;
-      bottom: 16px;
-      z-index: 2;
-      padding: 8px 12px;
+    .btn:disabled { opacity: 0.76; cursor: wait; }
+    .btn-dot {
+      width: 7px;
+      height: 7px;
       border-radius: 999px;
-      font-size: 12px;
-      color: rgba(236,244,255,0.78);
-      background: rgba(4, 8, 16, 0.35);
-      border: 1px solid rgba(255,255,255,0.05);
-      backdrop-filter: blur(8px);
+      background: rgba(120, 185, 255, 0.96);
+      box-shadow: 0 0 10px rgba(120,185,255,0.42);
+      flex: 0 0 auto;
+    }
+
+    .hud {
+      position: absolute;
+      left: 18px;
+      bottom: 18px;
+      z-index: 2;
+      display: grid;
+      gap: 8px;
       pointer-events: none;
       user-select: none;
     }
+
+    .hud-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      width: fit-content;
+      padding: 10px 14px;
+      border-radius: 16px;
+      background: rgba(4, 8, 16, 0.34);
+      border: 1px solid rgba(255,255,255,0.06);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 28px rgba(0,0,0,0.22);
+    }
+
+    .hud-brand {
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: rgba(236,244,255,0.92);
+      font-weight: 700;
+    }
+
+    .hud-chip {
+      min-width: 72px;
+      text-align: center;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.9);
+      background: linear-gradient(135deg, rgba(28, 39, 62, 0.72), rgba(52, 126, 255, 0.18));
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .hud-note {
+      width: fit-content;
+      padding: 7px 11px;
+      border-radius: 999px;
+      font-size: 11px;
+      color: rgba(236,244,255,0.74);
+      background: rgba(4, 8, 16, 0.24);
+      border: 1px solid rgba(255,255,255,0.04);
+      backdrop-filter: blur(8px);
+      letter-spacing: 0.02em;
+    }
+
+    .band-legend {
+      display: grid;
+      gap: 8px;
+      width: fit-content;
+      padding: 10px 12px;
+      border-radius: 16px;
+      background: rgba(4, 8, 16, 0.26);
+      border: 1px solid rgba(255,255,255,0.05);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 28px rgba(0,0,0,0.18);
+    }
+
+    .band-item {
+      display: grid;
+      gap: 5px;
+      min-width: 168px;
+    }
+
+    .band-label {
+      font-size: 10px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: rgba(236,244,255,0.72);
+    }
+
+    .band-meter {
+      position: relative;
+      display: block;
+      height: 5px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.04);
+    }
+
+    .band-meter i {
+      display: block;
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      transform-origin: left center;
+      background: linear-gradient(90deg, rgba(120,185,255,0.45), rgba(255,255,255,0.92));
+      box-shadow: 0 0 12px rgba(120,185,255,0.22);
+    }
+
+    .band-item[data-band="bass"] .band-meter i {
+      background: linear-gradient(90deg, rgba(255,255,255,0.18), rgba(90, 160, 255, 0.92));
+    }
+    .band-item[data-band="mid"] .band-meter i {
+      background: linear-gradient(90deg, rgba(255,255,255,0.18), rgba(130, 210, 255, 0.92));
+    }
+    .band-item[data-band="high"] .band-meter i {
+      background: linear-gradient(90deg, rgba(255,255,255,0.18), rgba(190, 235, 255, 0.98));
+    }
+    .btn {
+  margin-top: 30px; /* Увеличьте число, если нужно сместить еще ниже */
+}
+
   </style>
 </head>
 <body>
   <div class="frame">
     <canvas id="bg"></canvas>
     <canvas id="art"></canvas>
-    <button class="btn" id="btn" title="Подключить звук системы">◉ Подключить звук</button>
-    <div class="hint">Колёсико: усиление breakdown / дропа (инвертировано)</div>
+    <button class="btn" id="btn" title="Подключить звук системы"><span class="btn-dot"></span><span>ПОДКЛЮЧИТЬ</span></button>
+    
+    <div class="hud">
+      <div class="hud-row">
+        <span class="hud-brand">AUDIO REACTIVE</span>
+        <span class="hud-chip" id="hudDrop">LIVE</span>
+      </div>
+      <div class="band-legend">
+        <div class="band-item" data-band="bass">
+          <span class="band-label">БАС</span>
+          <span class="band-meter"><i id="meterBass"></i></span>
+        </div>
+        <div class="band-item" data-band="mid">
+          <span class="band-label">СЕРЕДИНА</span>
+          <span class="band-meter"><i id="meterMid"></i></span>
+        </div>
+        <div class="band-item" data-band="high">
+          <span class="band-label">ВЕРХ</span>
+          <span class="band-meter"><i id="meterHigh"></i></span>
+        </div>
+      </div>
+      <div class="hud-note">Wheel · breakdown / drop</div>
+    </div>
   </div>
 
   <script>
@@ -111,8 +243,8 @@
       nodeGlowAudioBoost: 2.2,
       nodeGlowBreathRange: 0.6,
 
-      linkBaseCount: 95,            
-      linkAudioBoost: 420,           
+      linkBaseCount: 50,            
+      linkAudioBoost: 200,           
       linkSurvivalThreshold: 0.012, 
       linkScoreEnergyWeight: 0.65,  
       linkScoreProximity: 0.15,     
@@ -148,6 +280,10 @@
     const canvas = document.getElementById('art');
     const ctx = canvas.getContext('2d');
     const btn = document.getElementById('btn');
+    const hudDrop = document.getElementById('hudDrop');
+    const meterBass = document.getElementById('meterBass');
+    const meterMid = document.getElementById('meterMid');
+    const meterHigh = document.getElementById('meterHigh');
 
     let width = 0, height = 0, dpr = Math.min(window.devicePixelRatio || 1, 1.25);
     let audioEnabled = false, audioCtx, analyser, source, freqData = null, mediaStream = null;
@@ -221,6 +357,13 @@
       return (sum / (end - start)) / 255;
     }
 
+    function updateHudBands(bass, vocal, treble) {
+      const smooth = v => Math.max(0, Math.min(1, v));
+      if (meterBass) meterBass.style.width = `${smooth(bass) * 100}%`;
+      if (meterMid) meterMid.style.width = `${smooth(vocal) * 100}%`;
+      if (meterHigh) meterHigh.style.width = `${smooth(treble) * 100}%`;
+    }
+
     function createNode(kind, fadeIn = false) {
       const xRatio = kind === 'bass' ? 0.06 + Math.random() * 0.24 : kind === 'vocal' ? 0.34 + Math.random() * 0.32 : 0.68 + Math.random() * 0.24;
       const x = width * xRatio;
@@ -273,10 +416,14 @@
     function readAudio() {
       if (!audioEnabled || !analyser || !freqData) {
         const wave = 0.5 + 0.5 * Math.sin(time * 1.18);
+        const bass = 0.18 + 0.06 * Math.sin(time * 0.7);
+        const vocal = 0.14 + 0.05 * Math.cos(time * 1.12);
+        const treble = 0.12 + 0.05 * Math.sin(time * 1.73 + 1.4);
+        updateHudBands(bass, vocal, treble);
         return {
-          bass: 0.18 + 0.06 * Math.sin(time * 0.7),
-          vocal: 0.14 + 0.05 * Math.cos(time * 1.12),
-          treble: 0.12 + 0.05 * Math.sin(time * 1.73 + 1.4),
+          bass,
+          vocal,
+          treble,
           energy: 0.12 + wave * 0.08, beatPulse: 0
         };
       }
@@ -286,6 +433,7 @@
       const treble = getBandVolumeHz(freqData, 3200, 12000);
       const air = getBandVolumeHz(freqData, 12000, 18000);
       const energy = clamp01(bass * 0.34 + vocal * 0.37 + treble * 0.21 + air * 0.08);
+      updateHudBands(bass, vocal, treble);
       return { bass, vocal, treble, energy, beatPulse: Math.max(0, kickTimer / 10), snarePulse: Math.max(0, snareTimer / 7) };
     }
 
@@ -309,6 +457,9 @@
 
       breakdownIntensity += (breakdownTarget - breakdownIntensity) * 0.08;
       breakdownIntensity = clamp01(breakdownIntensity);
+      if (hudDrop) {
+        hudDrop.textContent = breakdownIntensity > 0.985 ? 'MAX' : breakdownIntensity > 0.55 ? 'DROP' : 'LIVE';
+      }
 
       if (breakdownIntensity > 0.03) cssFilterPulse = Math.max(cssFilterPulse, breakdownIntensity * 0.6);
 
@@ -765,6 +916,29 @@
       }
       if (breakdownIntensity > 0.74 && Math.random() > 0.55) {
         ctx.globalCompositeOperation = 'screen'; ctx.fillStyle = `rgba(255, 0, 0, ${0.08 + breakdownIntensity * 0.18})`; ctx.fillRect(0, 0, width, height); ctx.globalCompositeOperation = 'source-over';
+      }
+
+      if (breakdownIntensity > 0.985) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+        const stripeCount = 10 + Math.floor((breakdownIntensity - 0.985) * 900);
+        for (let i = 0; i < stripeCount; i++) {
+          const t = i / stripeCount;
+          const h = 3 + (i % 4) * 1.8 + breakdownIntensity * 5.5;
+          const y = (t * height + Math.sin(time * 14 + i * 1.9) * (6 + breakdownIntensity * 10)) % (height + 60) - 30;
+          const alpha = 0.04 + (1 - t) * 0.1 + Math.random() * 0.02;
+          const red = 215 + (i % 3) * 12;
+          const green = 14 + (i % 2) * 8;
+          const blue = 14 + (i % 2) * 8;
+          ctx.fillStyle = `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+          ctx.fillRect(0, y, width, h);
+        }
+        ctx.fillStyle = `rgba(255,255,255,${0.03 + breakdownIntensity * 0.05})`;
+        for (let i = 0; i < 5; i++) {
+          const y = height * (0.14 + i * 0.17) + Math.sin(time * 18 + i * 2.7) * 5;
+          ctx.fillRect(0, y, width, 1);
+        }
+        ctx.restore();
       }
 
       const vignette = ctx.createRadialGradient(width * 0.5, height * 0.52, Math.min(width, height) * 0.18, width * 0.5, height * 0.52, Math.max(width, height) * 0.82);
