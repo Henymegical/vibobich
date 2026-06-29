@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Аудио-реактивная нейросеть 2.6 (Optimized Edition)</title>
+  <title>Аудио-реактивная нейросеть 2.7 (Neural Wave Edition)</title>
   <style>
     :root { color-scheme: dark; }
     * { box-sizing: border-box; }
@@ -92,9 +92,13 @@
       bottom: 18px;
       z-index: 2;
       display: grid;
-      gap: 8px;
+      gap: 10px;
       pointer-events: none;
       user-select: none;
+    }
+
+    .hud > * {
+      pointer-events: auto;
     }
 
     .hud-row {
@@ -141,6 +145,76 @@
       border: 1px solid rgba(255,255,255,0.04);
       backdrop-filter: blur(8px);
       letter-spacing: 0.02em;
+    }
+
+    .tune-panel {
+      display: grid;
+      gap: 9px;
+      width: min(280px, 42vw);
+      padding: 12px;
+      border-radius: 18px;
+      background: rgba(4, 8, 16, 0.28);
+      border: 1px solid rgba(255,255,255,0.05);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 28px rgba(0,0,0,0.18);
+    }
+
+    .tune-title {
+      font-size: 10px;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      color: rgba(236,244,255,0.72);
+      font-weight: 700;
+    }
+
+    .tune-row {
+      display: grid;
+      gap: 5px;
+    }
+
+    .tune-row label {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: rgba(236,244,255,0.72);
+    }
+
+    .tune-row output {
+      color: rgba(255,255,255,0.96);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .tune-row input[type="range"] {
+      width: 100%;
+      appearance: none;
+      height: 6px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(120,185,255,0.24), rgba(255,255,255,0.08));
+      outline: none;
+    }
+
+    .tune-row input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(230, 245, 255, 0.96);
+      box-shadow: 0 0 0 4px rgba(120,185,255,0.15);
+      cursor: pointer;
+    }
+
+    .tune-row input[type="range"]::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(230, 245, 255, 0.96);
+      box-shadow: 0 0 0 4px rgba(120,185,255,0.15);
+      cursor: pointer;
     }
 
     .band-legend {
@@ -197,13 +271,253 @@
     .band-item[data-band="high"] .band-meter i {
       background: linear-gradient(90deg, rgba(255,255,255,0.18), rgba(190, 235, 255, 0.98));
     }
+
+    .dev-panel {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      z-index: 5;
+      width: min(420px, 38vw);
+      max-height: calc(100% - 36px);
+      overflow: auto;
+      pointer-events: auto;
+      transition: opacity 180ms ease, transform 180ms ease;
+    }
+
+    .dev-panel.hidden {
+      opacity: 0;
+      transform: translateY(-8px) scale(0.985);
+      pointer-events: none;
+    }
+
+    .dev-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .dev-subtitle {
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(236,244,255,0.62);
+      margin-top: 4px;
+    }
+
+    .dev-btn {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.06);
+      color: rgba(245,250,255,0.94);
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+    }
+
+    .dev-btn:hover {
+      transform: translateY(-1px);
+      background: rgba(255,255,255,0.09);
+      border-color: rgba(190,220,255,0.16);
+    }
+
+    .dev-grid {
+      display: grid;
+      gap: 10px;
+      max-height: 70vh;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .dev-section {
+      display: grid;
+      gap: 10px;
+      padding-bottom: 10px;
+      margin-bottom: 6px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .dev-section:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+      margin-bottom: 0;
+    }
+
+    .dev-section-title {
+      font-size: 10px;
+      letter-spacing: 0.26em;
+      text-transform: uppercase;
+      color: rgba(190,220,255,0.78);
+      font-weight: 700;
+      padding: 4px 0 0;
+    }
+
+    .dev-row {
+      display: grid;
+      gap: 6px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .dev-row:last-child { border-bottom: 0; }
+
+    .dev-row label {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: rgba(236,244,255,0.72);
+    }
+
+    .dev-hint {
+      font-size: 9px;
+      line-height: 1.35;
+      letter-spacing: 0.01em;
+      color: rgba(236,244,255,0.56);
+      font-family: inherit;
+      margin-top: -2px;
+    }
+
+    .dev-value {
+      color: rgba(255,255,255,0.96);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .dev-inputs {
+      display: grid;
+      grid-template-columns: 1fr 84px;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .dev-inputs input[type="range"],
+    .dev-inputs input[type="number"] {
+      width: 100%;
+      appearance: none;
+      height: 6px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(120,185,255,0.24), rgba(255,255,255,0.08));
+      outline: none;
+    }
+
+    .dev-inputs input[type="number"] {
+      height: auto;
+      padding: 6px 8px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04);
+      color: rgba(245,250,255,0.94);
+      font-size: 11px;
+      letter-spacing: 0.02em;
+    }
+
+    .dev-inputs input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(230, 245, 255, 0.96);
+      box-shadow: 0 0 0 4px rgba(120,185,255,0.15);
+      cursor: pointer;
+    }
+
+    .dev-inputs input[type="range"]::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(230, 245, 255, 0.96);
+      box-shadow: 0 0 0 4px rgba(120,185,255,0.15);
+      cursor: pointer;
+    }
+
+    .screen-control {
+      position: relative;
+      width: min(360px, 46vw);
+      padding: 12px 14px 11px;
+      border-radius: 18px;
+      background: rgba(4, 8, 16, 0.42);
+      border: 1px solid rgba(255,255,255,0.08);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 10px 28px rgba(0,0,0,0.18);
+      display: grid;
+      gap: 8px;
+      pointer-events: auto;
+      user-select: none;
+    }
+
+    .screen-control-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      font-size: 10px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: rgba(236,244,255,0.74);
+      font-weight: 700;
+    }
+
+    .screen-control-head output {
+      color: rgba(255,255,255,0.96);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.08em;
+    }
+
+    .screen-control input[type="range"] {
+      width: 100%;
+      appearance: none;
+      height: 6px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(120,185,255,0.24), rgba(255,255,255,0.08));
+      outline: none;
+      cursor: pointer;
+    }
+
+    .screen-control input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(230, 245, 255, 0.96);
+      box-shadow: 0 0 0 4px rgba(120,185,255,0.15);
+      cursor: pointer;
+    }
+
+    .screen-control input[type="range"]::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(230, 245, 255, 0.96);
+      box-shadow: 0 0 0 4px rgba(120,185,255,0.15);
+      cursor: pointer;
+    }
+
+    .screen-control .screen-control-hint {
+      font-size: 10px;
+      line-height: 1.35;
+      color: rgba(236,244,255,0.62);
+      letter-spacing: 0.01em;
+    }
+
   </style>
 </head>
 <body>
   <div class="frame">
     <canvas id="bg"></canvas>
     <canvas id="art"></canvas>
-    <button class="btn" id="btn" title="Подключить звук системы"><span class="btn-dot"></span><span>ПОДКЛЮЧИТЬ</span></button>
+    <button class="btn" id="btn" title="Подключить звук системы"><span class="btn-dot"></span><span>CONNECT</span></button>
 
     <div class="hud">
       <div class="hud-row">
@@ -212,70 +526,139 @@
       </div>
       <div class="band-legend">
         <div class="band-item" data-band="bass">
-          <span class="band-label">БАС</span>
+          <span class="band-label">BASS</span>
           <span class="band-meter"><i id="meterBass"></i></span>
         </div>
         <div class="band-item" data-band="mid">
-          <span class="band-label">СЕРЕДИНА</span>
+          <span class="band-label">MID</span>
           <span class="band-meter"><i id="meterMid"></i></span>
         </div>
         <div class="band-item" data-band="high">
-          <span class="band-label">ВЕРХ</span>
+          <span class="band-label">HIGH</span>
           <span class="band-meter"><i id="meterHigh"></i></span>
         </div>
       </div>
-      <div class="hud-note">Wheel · breakdown / drop</div>
+      <div class="hud-note">Wheel · breakdown / drop · on-screen calmness · F2 developer panel</div>
+      <div class="screen-control" id="calmControl">
+        <div class="screen-control-head">
+          <span>Motion Calmness</span>
+          <output id="calmValue">55%</output>
+        </div>
+        <input id="calmSlider" type="range" min="0" max="100" value="55" />
+        <div class="screen-control-hint">Higher values smooth idle jitter and slow breathing. Lower values make the network twitchier for Nightcore-style tracks.</div>
+      </div>
+
     </div>
+  </div>
+
+  <div class="tune-panel dev-panel hidden" id="devPanel">
+    <div class="dev-head">
+      <div>
+        <div class="tune-title">Developer panel</div>
+        <div class="dev-subtitle">F2 · live variables · manual override</div>
+      </div>
+      <button class="dev-btn" id="devReset" type="button">Reset</button>
+    </div>
+    <div class="dev-grid" id="devGrid"></div>
   </div>
 
   <script>
     const CONFIG = {
-      maxNodes: 72,
-      bassNodes: 10,
-      vocalNodes: 10,
-      trebleNodes: 10,
-      nodeBaseRadius: 4.0,
-      nodeEnergyRadiusBoost: 1.8,
-      nodeGlowBaseMult: 2.0,
-      nodeGlowAudioBoost: 3.2,
-      nodeGlowBreathRange: 1.0,
 
-      linkBaseCount: 60,
-      linkAudioBoost: 400,
-      linkSurvivalThreshold: 0.012,
-      linkScoreEnergyWeight: 0.65,
-      linkScoreProximity: 0.15,
-      linkSameClusterBonus: 0.10,
-      linkDiffClusterBonus: 0.09,
-      linkAudioComboBonus: 0.18,
+      // =======================
+      // Links
+      // =======================
+      linkNearPriority: 2.1,
+      linkBaseCount: 32,
+      linkAudioBoost: 100,
+
       linkMinAlpha: 0.01,
-      linkEnergyAlphaBoost: 0.38,
-      linkBaseWidth: 0.35,
-      linkEnergyWidthBoost: 2,
-      linkBendFactor: 0.2,
+      linkEnergyAlphaBoost: 0.52,
 
-      smallParticleCount: 200,
-      smallParticleSpeed: 0.045,
-      smallParticleAudioReactive: 0.013,
-      largePulseSpeed: 0.0022,
+      linkBaseWidth: 0.32,
+      linkEnergyWidthBoost: 1.0,
+      linkBendFactor: 0.24,
 
-      speedBase: 0.25,
-      speedEnergyMult: 2.2,
-      beatKickThreshold: 0.38,
-      beatKickRise: 0.08,
-      trebleSnareThreshold: 0.28,
+      linkSurvivalThreshold: 0.009,
+      linkScoreEnergyWeight: 0.72,
+      linkScoreProximity: 0.18,
+      linkSameClusterBonus: 0.12,
+      linkDiffClusterBonus: 0.11,
+      linkAudioComboBonus: 0.26,
 
-      gridCellSize: 104,
-      gridWaveIntensity: 16,
-      gridOpacity: 0.075,
-      saluteOpacity: 0.82,
-      redDropMix: 0.92,
 
-      idleNodeWander: 2.2,
-      idleNodeBreath: 4.2,
-      idleLinkBreath: 0.18,
-      idleGlowBoost: 0.16
+      // =======================
+      // Motion
+      // =======================
+      speedBase: 0.34,
+      speedEnergyMult: 3.0,
+      chainSpread: 0.66,
+      calmness: 0.55,
+
+      idleNodeWander: 3.1,
+      idleNodeBreath: 5.4,
+      idleLinkBreath: 0.24,
+
+      beatKickThreshold: 0.28,
+      beatKickRise: 0.05,
+      trebleSnareThreshold: 0.22,
+
+
+      // =======================
+      // Nodes
+      // =======================
+      nodeBaseRadius: 4.2,
+      nodeEnergyRadiusBoost: 2.4,
+
+      nodeGlowBaseMult: 0.6,
+      nodeGlowAudioBoost: 3.4,
+      nodeGlowBreathRange: 2.45,
+
+      maxNodes: 60,
+      bassNodes: 11,
+      vocalNodes: 11,
+      trebleNodes: 13,
+
+
+      // =======================
+      // Grid / Background
+      // =======================
+      gridCellSize: 100,
+      gridWaveIntensity: 20,
+      gridOpacity: 0.085,
+
+      wavefrontSpeed: 16,
+      wavefrontAlpha: 0.34,
+      wavefrontWidth: 170,
+      wavefrontGlow: 0.48,
+
+
+      // =======================
+      // Salutes
+      // =======================
+      saluteOpacity: 0.3,
+
+      mouseSaluteAlpha: 0.10,
+      mouseSaluteScale: 0.78,
+      mouseSaluteRings: 2,
+
+      beatSaluteAlpha: 0.12,
+      autoSaluteAlpha: 0.08,
+
+
+      // =======================
+      // Atmosphere
+      // =======================
+      smallParticleCount: 180,
+      smallParticleSpeed: 0.06,
+      smallParticleAudioReactive: 0.02,
+
+      largePulseSpeed: 0.0032,
+
+      redDropMix: 0.92
     };
+
+    const CONFIG_DEFAULTS = JSON.parse(JSON.stringify(CONFIG));
 
     const bgCanvas = document.getElementById('bg');
     const bgCtx = bgCanvas.getContext('2d', { alpha: false });
@@ -286,11 +669,16 @@
     const meterBass = document.getElementById('meterBass');
     const meterMid = document.getElementById('meterMid');
     const meterHigh = document.getElementById('meterHigh');
+    const devPanel = document.getElementById('devPanel');
+    const devGrid = document.getElementById('devGrid');
+    const devReset = document.getElementById('devReset');
+    const calmSlider = document.getElementById('calmSlider');
+    const calmValue = document.getElementById('calmValue');
 
     let width = 0, height = 0, dpr = Math.min(window.devicePixelRatio || 1, 1.25);
     let audioEnabled = false, audioCtx, analyser, source, freqData = null, mediaStream = null;
 
-    let nodes = [], links = [], pulses = [], particles = [], bursts = [], ripples = [], beatBridges = [], floatingTexts = [];
+    let nodes = [], links = [], pulses = [], particles = [], bursts = [], ripples = [], beatBridges = [], floatingTexts = [], wavefronts = [], currentChains = [];
     let nodeCounter = 0;
     let linkMemory = new Map();
 
@@ -346,8 +734,8 @@
       const distanceWeight = Math.pow(proximity, 3.5);
 
       const whiteBlend = smoothstep(0.82, 0.995, breakdownIntensity) * whiteMask;
-      const alpha = Math.max(CONFIG.linkMinAlpha, distanceWeight * 0.95 + strength * 0.12 + energy * CONFIG.linkEnergyAlphaBoost) * scaleCombo;
-      const boostedAlpha = alpha * (1 + whiteBlend * 0.55 + breakdownIntensity * 0.15);
+      const alpha = Math.max(CONFIG.linkMinAlpha, distanceWeight * 1.02 + strength * 0.10 + energy * CONFIG.linkEnergyAlphaBoost) * scaleCombo;
+      const boostedAlpha = alpha * (1 + whiteBlend * 0.48 + breakdownIntensity * 0.12);
 
       const hueA = getXColor(a.x);
       const hueB = getXColor(b.x);
@@ -362,15 +750,21 @@
       return { alpha: boostedAlpha, hue: avgHue, proximity, whiteBlend };
     }
 
-    function getBandVolumeHz(array, lowHz, highHz) {
+    function getBandVolumeHz(array, lowHz, highHz, tilt = 0) {
       const sampleRate = audioCtx ? audioCtx.sampleRate : 48000;
       const nyquist = sampleRate / 2;
       const binHz = nyquist / array.length;
       const start = Math.max(0, Math.floor(lowHz / binHz));
       const end = Math.max(start + 1, Math.min(array.length, Math.ceil(highHz / binHz)));
       let sum = 0;
-      for (let i = start; i < end; i++) sum += array[i];
-      return (sum / (end - start)) / 255;
+      let weightSum = 0;
+      for (let i = start; i < end; i++) {
+        const position = (i - start) / Math.max(1, end - start - 1);
+        const weight = 1 + tilt * (position * 2 - 1);
+        sum += array[i] * weight;
+        weightSum += weight;
+      }
+      return (sum / Math.max(weightSum, 0.0001)) / 255;
     }
 
     function updateHudBands(bass, vocal, treble) {
@@ -378,6 +772,377 @@
       if (meterBass) meterBass.style.width = `${smooth(bass) * 100}%`;
       if (meterMid) meterMid.style.width = `${smooth(vocal) * 100}%`;
       if (meterHigh) meterHigh.style.width = `${smooth(treble) * 100}%`;
+    }
+
+    const BAND_BINS = {
+      bass: [24, 180],
+      vocal: [180, 3200],
+      treble: [3200, 12000],
+      air: [12000, 18000]
+    };
+
+    const BAND_TILT = {
+      bass: -0.15,
+      vocal: 0.18,
+      treble: 0.34,
+      air: 0.48
+    };
+
+    const BAND_RESPONSE = {
+      bass: 1.0,
+      vocal: 1.22,
+      treble: 1.45,
+      air: 0.92
+    };
+
+    const BAND_HISTORY = {
+      bass: { fast: 0.08, slow: 0.08 },
+      vocal: { fast: 0.06, slow: 0.06 },
+      treble: { fast: 0.05, slow: 0.05 },
+      air: { fast: 0.04, slow: 0.04 }
+    };
+
+    function shapeBand(name, raw) {
+      const state = BAND_HISTORY[name];
+      const gain = BAND_RESPONSE[name] || 1;
+      const tilt = BAND_TILT[name] || 0;
+
+      state.fast = mix(state.fast, raw, 0.20);
+      state.slow = mix(state.slow, raw, 0.03);
+
+      const floor = Math.min(state.slow * 0.92, state.fast * 0.74 + 0.002);
+      const ceiling = Math.max(state.fast * (1.12 + Math.max(0, tilt) * 0.15), state.slow * 1.45, floor + 0.04);
+      const t = clamp01((raw - floor) / Math.max(ceiling - floor, 0.0001));
+      return clamp01(Math.pow(t, 0.82 - Math.max(0, tilt) * 0.12) * gain);
+    }
+
+    function getBandProfile(kind) {
+      return BAND_PROFILES[kind] || BAND_PROFILES.vocal;
+    }
+
+    function getNodeSignal(kind, bass, vocal, treble) {
+      const p = getBandProfile(kind);
+      return clamp01(bass * p.bass + vocal * p.vocal + treble * p.treble);
+    }
+
+    const BAND_PROFILES = {
+      bass: { bass: 0.72, vocal: 0.22, treble: 0.06, pan: -0.76, spread: 0.82 },
+      vocal: { bass: 0.18, vocal: 0.64, treble: 0.18, pan: 0.0, spread: 0.58 },
+      treble: { bass: 0.06, vocal: 0.22, treble: 0.72, pan: 0.76, spread: 0.82 }
+    };
+
+    const STRUCTURAL_FIELDS = new Set(['maxNodes', 'bassNodes', 'vocalNodes', 'trebleNodes']);
+
+    function getPanelValue(target, key) {
+      return target[key];
+    }
+
+    function syncPanelSectionValues(row, value, step) {
+      const output = row.querySelector('output');
+      const range = row.querySelector('.dev-range');
+      const number = row.querySelector('.dev-number');
+      const shown = (step < 0.01 ? value.toFixed(3) : step < 0.1 ? value.toFixed(2) : Number.isInteger(value) ? String(value) : value.toFixed(1));
+      if (output) output.textContent = shown;
+      if (range) range.value = String(value);
+      if (number) number.value = String(value);
+    }
+
+    function clampRange(v, min, max) {
+      return Math.max(min, Math.min(max, v));
+    }
+
+
+    function syncCalmnessUI(value) {
+      const v = clampRange(Number(value) || 0, 0, 100);
+      CONFIG.calmness = v / 100;
+      if (calmSlider) calmSlider.value = String(Math.round(v));
+      if (calmValue) calmValue.textContent = `${Math.round(v)}%`;
+      try { localStorage.setItem('eqCalmness', String(v)); } catch (e) {}
+    }
+
+    function getCalmProfile() {
+      const calm = clamp01(CONFIG.calmness ?? 0.55);
+      const calmBoost = 1 - Math.pow(1 - calm, 3.25);
+      return {
+        calm,
+        calmBoost,
+        speedMult: mix(1.52, 0.18, calmBoost),
+        idleWander: mix(1.95, 0.10, calmBoost),
+        idleBreath: mix(1.55, 0.12, calmBoost),
+        noise: mix(1.75, 0.06, calmBoost),
+        swirl: mix(1.38, 0.22, calmBoost),
+        wave: mix(1.42, 0.18, calmBoost),
+        link: mix(1.28, 0.36, calmBoost),
+        spawn: mix(1.16, 0.70, calmBoost),
+        activityBias: mix(0.00, 0.16, calmBoost)
+      };
+    }
+
+    function buildDevPanel() {
+      if (!devGrid) return;
+      const rows = [];
+
+      const sections = [
+        { title: 'Links', keys: ['linkNearPriority', 'linkBaseCount', 'linkAudioBoost', 'linkMinAlpha', 'linkEnergyAlphaBoost', 'linkBaseWidth', 'linkEnergyWidthBoost', 'linkBendFactor'] },
+        { title: 'Motion', keys: ['speedBase', 'speedEnergyMult', 'chainSpread', 'idleNodeBreath'] },
+        { title: 'Nodes', keys: ['nodeBaseRadius', 'nodeEnergyRadiusBoost', 'nodeGlowBaseMult', 'nodeGlowAudioBoost', 'nodeGlowBreathRange', 'maxNodes', 'bassNodes', 'vocalNodes', 'trebleNodes'] },
+        { title: 'Grid / background', keys: ['gridCellSize', 'gridWaveIntensity', 'gridOpacity', 'wavefrontSpeed', 'wavefrontAlpha', 'wavefrontGlow'] },
+        { title: 'Salutes', keys: ['saluteOpacity', 'mouseSaluteAlpha', 'mouseSaluteScale', 'mouseSaluteRings', 'beatSaluteAlpha', 'autoSaluteAlpha'] }
+      ];
+
+      const fieldByKey = new Map();
+      for (const field of DEV_FIELDS) fieldByKey.set(field.key, field);
+
+      devGrid.innerHTML = sections.map(section => {
+        const sectionRows = section.keys.map((key) => {
+          const field = fieldByKey.get(key);
+          if (!field) return '';
+          const initial = field.target[key];
+          const shown = Number.isInteger(initial) ? String(initial) : String(Number(initial).toFixed(field.step < 0.01 ? 3 : field.step < 0.1 ? 2 : 1));
+          return `
+            <div class="dev-row" data-field="${field.key}">
+              <label><span>${field.label}</span><output class="dev-value">${shown}</output></label>
+              <div class="dev-hint">${field.hint}</div>
+              <div class="dev-inputs">
+                <input class="dev-range" type="range" min="${field.min}" max="${field.max}" step="${field.step}" value="${shown}" />
+                <input class="dev-number" type="number" min="${field.min}" max="${field.max}" step="${field.step}" value="${shown}" />
+              </div>
+            </div>`;
+        }).join('');
+        return `
+          <div class="dev-section" data-group="${section.title}">
+            <div class="dev-section-title">${section.title}</div>
+            ${sectionRows}
+          </div>`;
+      }).join('');
+
+      devGrid.querySelectorAll('.dev-row').forEach((row) => {
+        const key = row.dataset.field;
+        const field = fieldByKey.get(key);
+        if (!field) return;
+        const range = row.querySelector('.dev-range');
+        const number = row.querySelector('.dev-number');
+        const commit = (raw) => {
+          let value = Number(raw);
+          if (!Number.isFinite(value)) return;
+          value = clampRange(value, field.min, field.max);
+          if (field.step >= 1 || Number.isInteger(field.step)) value = Math.round(value);
+          field.target[key] = value;
+          syncPanelSectionValues(row, value, field.step);
+          if (STRUCTURAL_FIELDS.has(key) && nodes.length) buildScene();
+        };
+        const initial = field.target[key];
+        if (range) range.addEventListener('input', e => commit(e.target.value));
+        if (number) number.addEventListener('input', e => commit(e.target.value));
+        if (range) range.value = String(initial);
+        if (number) number.value = String(initial);
+        commit(initial);
+      });
+    }
+
+    function syncDevPanelVisibility() {
+      if (!devPanel) return;
+      devPanel.classList.toggle('hidden', !PANEL_STATE.panelOpen);
+    }
+
+    function toggleDevPanel(force) {
+      PANEL_STATE.panelOpen = typeof force === 'boolean' ? force : !PANEL_STATE.panelOpen;
+      syncDevPanelVisibility();
+    }
+
+    function resetDevState() {
+      const currentCalmness = CONFIG.calmness;
+      Object.assign(CONFIG, JSON.parse(JSON.stringify(CONFIG_DEFAULTS)));
+      Object.assign(PANEL_STATE, JSON.parse(JSON.stringify(PANEL_DEFAULTS)));
+      CONFIG.calmness = currentCalmness;
+      buildDevPanel();
+      syncDevPanelVisibility();
+      syncCalmnessUI(Math.round(currentCalmness * 100));
+      if (nodes.length) buildScene();
+    }
+
+    const PANEL_DEFAULTS = {
+      mouseSaluteAlpha: CONFIG.mouseSaluteAlpha,
+      mouseSaluteScale: CONFIG.mouseSaluteScale,
+      mouseSaluteRings: CONFIG.mouseSaluteRings,
+      beatSaluteAlpha: CONFIG.beatSaluteAlpha,
+      autoSaluteAlpha: CONFIG.autoSaluteAlpha,
+      chainSpread: CONFIG.chainSpread,
+      panelOpen: false
+    };
+
+    const PANEL_STATE = { ...PANEL_DEFAULTS };
+    const DEV_STATE = PANEL_STATE; // backwards-compatible alias
+    const DEV_DEFAULTS = PANEL_DEFAULTS;
+
+    let savedCalmness = null;
+    try { savedCalmness = localStorage.getItem('eqCalmness'); } catch (e) {}
+    syncCalmnessUI(savedCalmness == null ? Math.round(CONFIG.calmness * 100) : Number(savedCalmness));
+
+
+    const DEV_FIELDS = [
+      { key: 'nodeBaseRadius', label: 'Node base radius', hint: 'Базовый размер узла без музыки.', min: 2, max: 8, step: 0.1, target: CONFIG },
+      { key: 'nodeEnergyRadiusBoost', label: 'Node radius boost', hint: 'Насколько узел раздувается от энергии трека.', min: 0, max: 5, step: 0.05, target: CONFIG },
+      { key: 'nodeGlowBaseMult', label: 'Glow base', hint: 'Общая сила свечения у нейронов.', min: 0.5, max: 5, step: 0.05, target: CONFIG },
+      { key: 'nodeGlowAudioBoost', label: 'Glow audio boost', hint: 'Дополнительный glow от громкости.', min: 0, max: 8, step: 0.05, target: CONFIG },
+      { key: 'nodeGlowBreathRange', label: 'Glow breath', hint: 'Амплитуда медленного дыхания свечения.', min: 0, max: 3, step: 0.05, target: CONFIG },
+      { key: 'linkBaseCount', label: 'Link base count', hint: 'Базовое число видимых связей.', min: 0, max: 240, step: 1, target: CONFIG },
+      { key: 'linkAudioBoost', label: 'Link audio boost', hint: 'Сколько связей добавляет энергия.', min: 0, max: 600, step: 1, target: CONFIG },
+      { key: 'linkNearPriority', label: 'Near priority', hint: 'Ниже — больше дальних красивых мостов, выше — плотнее локальные связи.', min: 0.2, max: 3.5, step: 0.01, target: CONFIG },
+      { key: 'linkMinAlpha', label: 'Link minimum alpha', hint: 'Минимальная прозрачность связи.', min: 0.001, max: 0.2, step: 0.001, target: CONFIG },
+      { key: 'linkEnergyAlphaBoost', label: 'Link alpha boost', hint: 'Насколько звук делает связи ярче.', min: 0, max: 1.5, step: 0.01, target: CONFIG },
+      { key: 'linkBaseWidth', label: 'Link base width', hint: 'Толщина связи в спокойном режиме.', min: 0.1, max: 2.5, step: 0.01, target: CONFIG },
+      { key: 'linkEnergyWidthBoost', label: 'Link width boost', hint: 'Насколько связь толстеет на пиках.', min: 0, max: 6, step: 0.05, target: CONFIG },
+      { key: 'gridCellSize', label: 'Grid cell size', hint: 'Размер клеток сетки.', min: 60, max: 160, step: 1, target: CONFIG },
+      { key: 'gridWaveIntensity', label: 'Grid wave intensity', hint: 'Сила волны у сетки.', min: 0, max: 36, step: 0.5, target: CONFIG },
+      { key: 'gridOpacity', label: 'Grid opacity', hint: 'Прозрачность сетки.', min: 0, max: 0.25, step: 0.001, target: CONFIG },
+      { key: 'saluteOpacity', label: 'Salute opacity', hint: 'Яркость авто- и бит-салютов.', min: 0.02, max: 0.5, step: 0.01, target: CONFIG },
+      { key: 'wavefrontSpeed', label: 'Wavefront speed', hint: 'Скорость боковых волн.', min: 2, max: 42, step: 0.1, target: CONFIG },
+      { key: 'wavefrontAlpha', label: 'Wavefront alpha', hint: 'Прозрачность волны.', min: 0.02, max: 0.8, step: 0.01, target: CONFIG },
+      { key: 'wavefrontGlow', label: 'Wavefront glow', hint: 'Свечение волны.', min: 0, max: 1.2, step: 0.01, target: CONFIG },
+      { key: 'speedBase', label: 'Motion base', hint: 'Базовая скорость движения сцены.', min: 0.05, max: 0.8, step: 0.01, target: CONFIG },
+      { key: 'speedEnergyMult', label: 'Motion energy mult', hint: 'Ускорение при росте энергии.', min: 0.2, max: 5, step: 0.01, target: CONFIG },
+      { key: 'chainSpread', label: 'Chain spread', hint: 'Разлёт текущих цепочек и их визуальная ширина.', min: 0.2, max: 1, step: 0.01, target: CONFIG },
+      { key: 'idleNodeBreath', label: 'Idle breath', hint: 'Сила спокойного дыхания.', min: 0, max: 10, step: 0.05, target: CONFIG },
+      { key: 'idleLinkBreath', label: 'Idle link breath', hint: 'Пульс связей без музыки.', min: 0, max: 1, step: 0.01, target: CONFIG },
+      { key: 'maxNodes', label: 'Max nodes', hint: 'Сколько узлов может жить одновременно.', min: 24, max: 160, step: 1, target: CONFIG },
+      { key: 'bassNodes', label: 'Bass nodes', hint: 'Сколько узлов относится к басу.', min: 4, max: 28, step: 1, target: CONFIG },
+      { key: 'vocalNodes', label: 'Mid nodes', hint: 'Сколько узлов живёт в середине.', min: 4, max: 28, step: 1, target: CONFIG },
+      { key: 'trebleNodes', label: 'High nodes', hint: 'Сколько узлов живёт в верхах.', min: 4, max: 28, step: 1, target: CONFIG },
+      { key: 'mouseSaluteAlpha', label: 'Mouse salute alpha', hint: 'Яркость всплеска от мыши.', min: 0.04, max: 0.45, step: 0.01, target: PANEL_STATE },
+      { key: 'mouseSaluteScale', label: 'Mouse salute scale', hint: 'Размер всплеска от мыши.', min: 0.5, max: 1.2, step: 0.01, target: PANEL_STATE },
+      { key: 'mouseSaluteRings', label: 'Mouse rings', hint: 'Сколько колец у мышиного салюта.', min: 1, max: 4, step: 1, target: PANEL_STATE },
+      { key: 'beatSaluteAlpha', label: 'Beat salute alpha', hint: 'Яркость салюта на ударе.', min: 0.06, max: 0.4, step: 0.01, target: PANEL_STATE },
+      { key: 'autoSaluteAlpha', label: 'Auto salute alpha', hint: 'Яркость автоматического салюта.', min: 0.04, max: 0.3, step: 0.01, target: PANEL_STATE }
+    ]
+
+    function clampRange(v, min, max) {
+      return Math.max(min, Math.min(max, v));
+    }
+
+    function trimEffectQueue(queue, limit) {
+      if (queue.length > limit) queue.splice(0, queue.length - limit);
+    }
+
+    function spawnSalute(x, y, source, energy, bass, vocal, treble, hueOverride = null) {
+      const kind = source === 'mouse' ? 'mouse' : source === 'beat' ? 'beat' : 'auto';
+      const alphaBase = kind === 'mouse'
+        ? PANEL_STATE.mouseSaluteAlpha
+        : kind === 'beat'
+          ? PANEL_STATE.beatSaluteAlpha
+          : PANEL_STATE.autoSaluteAlpha;
+      const scaleBase = kind === 'mouse'
+        ? PANEL_STATE.mouseSaluteScale
+        : kind === 'beat'
+          ? 0.92
+          : 0.78;
+      const ringCount = kind === 'mouse'
+        ? PANEL_STATE.mouseSaluteRings
+        : kind === 'beat'
+          ? 3
+          : 2;
+      const hue = hueOverride ?? getXColor(x);
+      const maxR = (kind === 'mouse' ? 150 : kind === 'beat' ? 185 : 130) * scaleBase + energy * (kind === 'mouse' ? 160 : 210);
+      bursts.push({
+        x,
+        y,
+        r: 6 + energy * 8 * scaleBase,
+        maxR,
+        alpha: alphaBase * (0.95 + energy * 0.3),
+        hue,
+        kind,
+        rings: ringCount,
+        seed: Math.random() * 1000,
+        spin: Math.random() * Math.PI * 2,
+        alphaDecay: kind === 'mouse' ? 0.016 : kind === 'beat' ? 0.018 : 0.015,
+        scale: scaleBase
+      });
+      trimEffectQueue(bursts, kind === 'mouse' ? 12 : 20);
+    }
+
+    function makeCurrentChain(source, energy, bass, vocal, treble, xHint = null, yHint = null) {
+      const activeNodes = nodes.filter(n => n.scale > 0.26 && n.activity > 0.16);
+      if (activeNodes.length < 2) return null;
+      const buckets = [[], [], [], [], []];
+      activeNodes.forEach(n => {
+        const bi = clampRange(Math.floor((n.x / Math.max(width, 1)) * 5), 0, 4);
+        buckets[bi].push(n);
+      });
+      const chosen = [];
+      buckets.forEach(bucket => {
+        if (!bucket.length) return;
+        let pick = bucket[(Math.random() * bucket.length) | 0];
+        if (xHint != null) {
+          let best = pick;
+          let bestDist = Math.abs(pick.x - xHint) + Math.abs((pick.y || 0) - (yHint ?? pick.y ?? 0)) * 0.35;
+          for (const candidate of bucket) {
+            const d = Math.abs(candidate.x - xHint) + Math.abs(candidate.y - (yHint ?? candidate.y)) * 0.35;
+            if (d < bestDist) { best = candidate; bestDist = d; }
+          }
+          pick = best;
+        }
+        chosen.push(pick);
+      });
+      if (chosen.length < 3) {
+        activeNodes.sort((a, b) => a.x - b.x);
+        chosen.length = 0;
+        const targetCount = Math.min(activeNodes.length, 4 + Math.floor(energy * 3));
+        const step = Math.max(1, Math.floor(activeNodes.length / targetCount));
+        for (let i = 0; i < activeNodes.length && chosen.length < targetCount; i += step) {
+          chosen.push(activeNodes[i]);
+        }
+      }
+      chosen.sort((a, b) => a.x - b.x);
+      if (chosen.length < 2) return null;
+      return {
+        nodes: chosen,
+        source,
+        hue: source === 'mouse' ? getXColor(xHint ?? chosen[0].x) : source === 'beat' ? (getXColor(chosen[0].x) + getXColor(chosen[chosen.length - 1].x)) * 0.5 : getXColor(chosen[(chosen.length / 2) | 0].x),
+        alpha: 0.72 + energy * 0.28,
+        life: 1.0 + energy * 1.4,
+        pulse: 0,
+        phase: Math.random() * Math.PI * 2,
+        speed: 0.45 + energy * 0.85,
+        thickness: source === 'mouse' ? 4.8 : source === 'beat' ? 4.1 : 3.2,
+        spread: CONFIG.chainSpread,
+        seed: Math.random() * 1000
+      };
+    }
+
+    function makeWavefront(kind, side, energy, bass, vocal, treble, variant = null) {
+      const profile = getBandProfile(kind);
+      const isBass = kind === 'bass';
+      const isTreble = kind === 'treble';
+      const isMid = kind === 'vocal';
+      const mode = variant ?? (Math.random() > 0.55 ? 'ribbon' : Math.random() > 0.45 ? 'filament' : 'flash');
+      const y = isBass
+        ? height * (0.10 + bass * 0.28 + Math.random() * 0.16)
+        : isTreble
+          ? height * (0.54 + treble * 0.24 + Math.random() * 0.16)
+          : height * (0.24 + vocal * 0.36 + Math.random() * 0.16);
+      const dir = side === 'left' ? 1 : -1;
+      const hue = side === 'left' ? getXColor(width * 0.08) : getXColor(width * 0.92);
+      const thickness = mode === 'flash' ? 0.72 : mode === 'filament' ? 0.86 : 1.0;
+      const speedScale = mode === 'flash' ? 1.28 : mode === 'filament' ? 0.92 : 1.0;
+      return {
+        kind,
+        mode,
+        x: side === 'left' ? -CONFIG.wavefrontWidth : width + CONFIG.wavefrontWidth,
+        y,
+        dir,
+        speed: (CONFIG.wavefrontSpeed + energy * 28 + (isBass ? bass * 20 : isTreble ? treble * 20 : vocal * 15)) * speedScale * (0.88 + Math.random() * 0.42),
+        width: (CONFIG.wavefrontWidth + energy * 180 + (isBass || isTreble ? 90 : 50)) * (mode === 'flash' ? 0.72 : mode === 'filament' ? 0.84 : 1),
+        alpha: CONFIG.wavefrontAlpha + energy * 0.22 + (mode === 'flash' ? 0.08 : 0),
+        glow: CONFIG.wavefrontGlow + energy * 0.25 + (mode === 'filament' ? 0.12 : 0),
+        hue,
+        phase: Math.random() * Math.PI * 2,
+        life: 1.0 + energy * 1.5,
+        amp: (10 + energy * 22 + (isBass ? bass * 42 : isTreble ? treble * 42 : vocal * 28)) * (0.78 + profile.spread * 0.34),
+        thickness,
+        spark: mode === 'flash' ? 0.45 : 0.22 + Math.random() * 0.35,
+        wobble: 0.5 + Math.random() * 1.2,
+        trail: 0.4 + Math.random() * 0.5
+      };
     }
 
     function createNode(kind, fadeIn = false) {
@@ -414,7 +1179,7 @@
     function buildScene() {
       nodes.length = 0; links.length = 0; linkMemory.clear();
       pulses.length = 0; particles.length = 0; bursts.length = 0;
-      ripples.length = 0; beatBridges.length = 0; floatingTexts.length = 0;
+      ripples.length = 0; beatBridges.length = 0; floatingTexts.length = 0; wavefronts.length = 0; currentChains.length = 0;
 
       for (let i = 0; i < CONFIG.bassNodes; i++) nodes.push(createNode('bass'));
       for (let i = 0; i < CONFIG.vocalNodes; i++) nodes.push(createNode('vocal'));
@@ -433,8 +1198,8 @@
       if (!audioEnabled || !analyser || !freqData) {
         const wave = 0.5 + 0.5 * Math.sin(time * 1.18);
         const bass = 0.18 + 0.06 * Math.sin(time * 0.7);
-        const vocal = 0.14 + 0.05 * Math.cos(time * 1.12);
-        const treble = 0.12 + 0.05 * Math.sin(time * 1.73 + 1.4);
+        const vocal = 0.16 + 0.06 * Math.cos(time * 1.12);
+        const treble = 0.15 + 0.07 * Math.sin(time * 1.73 + 1.4);
         updateHudBands(bass, vocal, treble);
         return {
           bass,
@@ -446,13 +1211,28 @@
         };
       }
       analyser.getByteFrequencyData(freqData);
-      const bass = getBandVolumeHz(freqData, 24, 180);
-      const vocal = getBandVolumeHz(freqData, 180, 3200);
-      const treble = getBandVolumeHz(freqData, 3200, 12000);
-      const air = getBandVolumeHz(freqData, 12000, 18000);
-      const energy = clamp01(bass * 0.34 + vocal * 0.37 + treble * 0.21 + air * 0.08);
+
+      const bassRaw = getBandVolumeHz(freqData, ...BAND_BINS.bass, BAND_TILT.bass);
+      const vocalRaw = getBandVolumeHz(freqData, ...BAND_BINS.vocal, BAND_TILT.vocal);
+      const trebleRaw = getBandVolumeHz(freqData, ...BAND_BINS.treble, BAND_TILT.treble);
+      const airRaw = getBandVolumeHz(freqData, ...BAND_BINS.air, BAND_TILT.air);
+
+      const bass = shapeBand('bass', bassRaw);
+      const vocal = shapeBand('vocal', vocalRaw);
+      const treble = shapeBand('treble', trebleRaw);
+      const air = shapeBand('air', airRaw);
+
+      const energy = clamp01(bass * 0.26 + vocal * 0.34 + treble * 0.30 + air * 0.10);
       updateHudBands(bass, vocal, treble);
-      return { bass, vocal, treble, energy, beatPulse: Math.max(0, kickTimer / 10), snarePulse: Math.max(0, snareTimer / 7) };
+
+      return {
+        bass,
+        vocal,
+        treble,
+        energy,
+        beatPulse: Math.max(0, kickTimer / 10),
+        snarePulse: Math.max(0, snareTimer / 7)
+      };
     }
 
     function makeBeatBridge(a, b, energy, bass, treble) {
@@ -465,12 +1245,41 @@
       };
     }
 
+function makeWavefront(kind, side, energy, bass, vocal, treble) {
+      const isBass = kind === 'bass';
+      const isTreble = kind === 'treble';
+      const isMid = kind === 'vocal';
+      const y = isBass
+        ? height * (0.12 + bass * 0.26 + Math.random() * 0.16)
+        : isTreble
+          ? height * (0.56 + treble * 0.22 + Math.random() * 0.16)
+          : height * (0.28 + vocal * 0.34 + Math.random() * 0.16);
+      const dir = side === 'left' ? 1 : -1;
+      const hue = side === 'left' ? getXColor(width * 0.08) : getXColor(width * 0.92);
+      return {
+        kind,
+        x: side === 'left' ? -CONFIG.wavefrontWidth : width + CONFIG.wavefrontWidth,
+        y,
+        dir,
+        speed: CONFIG.wavefrontSpeed + energy * 28 + (isBass ? bass * 20 : isTreble ? treble * 20 : vocal * 15),
+        width: CONFIG.wavefrontWidth + energy * 240 + (isBass || isTreble ? 90 : 50),
+        alpha: CONFIG.wavefrontAlpha + energy * 0.22,
+        glow: CONFIG.wavefrontGlow + energy * 0.25,
+        hue,
+        phase: Math.random() * Math.PI * 2,
+        life: 1.0 + energy * 1.5,
+        amp: 10 + energy * 22 + (isBass ? bass * 42 : isTreble ? treble * 42 : vocal * 28)
+      };
+    }
+
     function updateScene(audio) {
       const { bass, vocal, treble, energy } = audio;
+      const calmProfile = getCalmProfile();
+      const calmness = calmProfile.calm;
       const bassRise = Math.max(0, bass - lastBass), trebleRise = Math.max(0, treble - lastTreble);
 
-      globalSpeedMult = mix(globalSpeedMult, CONFIG.speedBase + energy * CONFIG.speedEnergyMult, 0.04);
-      globalHueOffset = (globalHueOffset + 0.16 * globalSpeedMult + energy * 0.5) % 360;
+      globalSpeedMult = mix(globalSpeedMult, (CONFIG.speedBase + energy * CONFIG.speedEnergyMult) * calmProfile.speedMult, 0.055);
+      globalHueOffset = (globalHueOffset + 0.16 * globalSpeedMult + energy * 0.5 * calmProfile.wave) % 360;
       longTermEnergy = longTermEnergy * 0.992 + energy * 0.008;
 
       breakdownIntensity += (breakdownTarget - breakdownIntensity) * 0.08;
@@ -488,14 +1297,17 @@
       const beatHit = bassRise > CONFIG.beatKickRise && bass > CONFIG.beatKickThreshold && kickTimer === 0;
       if (beatHit) {
         kickTimer = 10; beatTimer = 8;
-        const activeNodes = nodes.filter(n => n.scale > 0.45 && n.activity > 0.22);
+        const activeNodes = nodes.filter(n => n.scale > 0.4 && n.activity > 0.18);
         if (activeNodes.length > 0) {
           let n = activeNodes[(Math.random() * activeNodes.length) | 0];
           const bassNodes = activeNodes.filter(nd => nd.kind === 'bass');
-          if (bassNodes.length && Math.random() > 0.35) n = bassNodes[(Math.random() * bassNodes.length) | 0];
+          if (bassNodes.length && Math.random() > 0.22) n = bassNodes[(Math.random() * bassNodes.length) | 0];
 
-          bursts.push({ x: n.x, y: n.y, r: 16, maxR: 180 + bass * 320, alpha: CONFIG.saluteOpacity, hue: getXColor(n.x) });
-          ripples.push({ x: n.x, y: n.y, r: 0, speed: 8 + bass * 14 * globalSpeedMult, alpha: 0.5, maxR: width * 1.45 });
+          spawnSalute(n.x, n.y, 'beat', energy + bass * 0.65, bass, vocal, treble, getXColor(n.x));
+          ripples.push({ x: n.x, y: n.y, r: 0, speed: 10 + bass * 18 * globalSpeedMult, alpha: 0.56, maxR: width * 1.52 });
+          trimEffectQueue(ripples, 18);
+          const beatHalo = makeCurrentChain('beat', energy + bass * 0.35, bass, vocal, treble);
+          if (beatHalo) { currentChains.push(beatHalo); trimEffectQueue(currentChains, 10); }
 
           const leftCluster = activeNodes.filter(nd => nd.kind === 'bass');
           const centerCluster = activeNodes.filter(nd => nd.kind === 'vocal');
@@ -503,12 +1315,19 @@
 
           if (leftCluster.length && rightCluster.length) {
             beatBridges.push(makeBeatBridge(leftCluster[(Math.random() * leftCluster.length) | 0], rightCluster[(Math.random() * rightCluster.length) | 0], energy, bass, treble));
-          } else if (leftCluster.length && centerCluster.length) {
+          }
+          if (leftCluster.length && centerCluster.length) {
             beatBridges.push(makeBeatBridge(leftCluster[(Math.random() * leftCluster.length) | 0], centerCluster[(Math.random() * centerCluster.length) | 0], energy, bass, treble));
           }
 
+          wavefronts.push(makeWavefront('bass', 'left', energy, bass, vocal, treble, Math.random() > 0.55 ? 'ribbon' : 'flash'));
+          if (vocal > 0.12 || energy > 0.2) wavefronts.push(makeWavefront('vocal', Math.random() > 0.5 ? 'left' : 'right', energy, bass, vocal, treble, Math.random() > 0.45 ? 'filament' : 'ribbon'));
+          if (treble > 0.12 || energy > 0.18) wavefronts.push(makeWavefront('treble', 'right', energy, bass, vocal, treble, Math.random() > 0.5 ? 'flash' : 'filament'));
+          if (energy > 0.42) wavefronts.push(makeWavefront('vocal', 'left', energy * 0.85, bass, vocal, treble, 'ribbon'));
+          trimEffectQueue(wavefronts, 14);
+
           if (breakdownIntensity > 0.2) {
-            flash = Math.min(1, flash + 0.22); cssFilterPulse = Math.max(cssFilterPulse, 0.55); glitchPulse = Math.max(glitchPulse, 0.6);
+            flash = Math.min(1, flash + 0.28); cssFilterPulse = Math.max(cssFilterPulse, 0.55); glitchPulse = Math.max(glitchPulse, 0.6);
           }
         }
       }
@@ -518,16 +1337,27 @@
         const trebleNodes = nodes.filter(n => n.kind === 'treble' && n.scale > 0.45);
         if (trebleNodes.length > 0) {
           const n = trebleNodes[(Math.random() * trebleNodes.length) | 0];
-          bursts.push({ x: n.x, y: n.y, r: 5, maxR: 78 + treble * 120, alpha: CONFIG.saluteOpacity * 0.82, hue: getXColor(n.x) });
+          spawnSalute(n.x, n.y, 'auto', energy + treble * 0.35, bass, vocal, treble, getXColor(n.x));
+          wavefronts.push(makeWavefront('treble', 'right', energy + treble * 0.18, bass, vocal, treble, Math.random() > 0.45 ? 'filament' : 'flash'));
+          trimEffectQueue(wavefronts, 14);
+          const trebleChain = makeCurrentChain('auto', energy + treble * 0.24, bass, vocal, treble, n.x, n.y);
+          if (trebleChain) { currentChains.push(trebleChain); trimEffectQueue(currentChains, 10); }
         }
       }
 
-      if (energy > longTermEnergy * 1.2 && energy > 0.3 && Math.random() > 0.72) {
+      if (energy > longTermEnergy * 1.18 && energy > 0.3 && Math.random() > 0.72) {
         const pool = nodes.filter(n => n.scale > 0.35 && n.activity > 0.3);
         if (pool.length > 0) {
           const n = pool[(Math.random() * pool.length) | 0];
           const textPool = ['SYNC', 'FLOW', 'GRID', 'NODE', '0x' + Math.random().toString(16).slice(2, 6).toUpperCase(), 'DATA', 'LINK'];
           floatingTexts.push({ x: n.x + (Math.random() - 0.5) * 100, y: n.y + (Math.random() - 0.5) * 70, text: textPool[(Math.random() * textPool.length) | 0], alpha: 1, life: 22 + Math.random() * 18 });
+          if (Math.random() > 0.5) {
+            spawnSalute(n.x, n.y, 'auto', energy * 0.9, bass, vocal, treble, getXColor(n.x));
+          }
+          if (Math.random() > 0.65) {
+            const surge = makeCurrentChain('auto', energy, bass, vocal, treble, n.x, n.y);
+            if (surge) currentChains.push(surge);
+          }
         }
       }
 
@@ -537,9 +1367,9 @@
       lastBass = bass; lastTreble = treble;
 
       const spawnTargets = {
-        bass: 5 + Math.floor(4 + bass * 18 + energy * 2),
-        vocal: 6 + Math.floor(4 + vocal * 16 + energy * 2),
-        treble: 5 + Math.floor(4 + treble * 18 + energy * 2)
+        bass: Math.max(4, Math.round((7 + Math.floor(6 + bass * 28 + energy * 5)) * calmProfile.spawn)),
+        vocal: Math.max(4, Math.round((8 + Math.floor(5 + vocal * 22 + energy * 4)) * calmProfile.spawn)),
+        treble: Math.max(4, Math.round((7 + Math.floor(6 + treble * 28 + energy * 5)) * calmProfile.spawn))
       };
 
       const aliveNodes = nodes.filter(n => !n.dead);
@@ -556,8 +1386,9 @@
       }
 
       const silence = clamp01(1 - Math.max(energy, breakdownIntensity * 0.95) * 3.6);
-      const idlePhaseA = time * (0.18 + silence * 0.12);
-      const idlePhaseB = time * (0.27 + silence * 0.09);
+      const quietPulse = mix(1.32, 0.22, calmProfile.calmBoost);
+      const idlePhaseA = time * (0.18 + silence * 0.12) * quietPulse;
+      const idlePhaseB = time * (0.27 + silence * 0.09) * quietPulse;
 
       nodes.forEach(node => {
         if (node.state === 'in') {
@@ -568,30 +1399,31 @@
           if (node.scale <= 0) node.dead = true;
         }
 
-        const bandWeight = node.kind === 'bass' ? bass : node.kind === 'vocal' ? vocal : treble;
-        const laneSide = node.kind === 'bass' ? -1 : node.kind === 'treble' ? 1 : 0;
-        const laneBias = width * 0.04 * laneSide * (0.35 + bandWeight * 0.85);
-        const centerPull = (width * 0.5 - node.baseX) * (energy - 0.45) * 0.04;
-        const audioScatter = Math.sin(time * 0.8 + node.seed * 10) * (width * 0.2) * energy;
+        const profile = getBandProfile(node.kind);
+        const bandWeight = getNodeSignal(node.kind, bass, vocal, treble);
+        const laneBias = width * 0.20 * profile.pan * (0.35 + bandWeight * 0.85) * 0.78;
+        const centerPull = (width * 0.5 - node.baseX) * 0.015 * (energy - 0.45);
+        const audioScatter = Math.sin(time * 0.8 + node.seed * 10) * (width * 0.12 + width * 0.08 * profile.spread) * energy;
+        const xDrift = Math.cos(time * 0.31 + node.phase + node.seed * 2) * width * 0.018 * profile.spread * (0.45 + energy);
 
-        const anchorShift = laneBias + centerPull + audioScatter;
+        const anchorShift = laneBias + centerPull + audioScatter + xDrift;
         const targetAnchorX = node.baseX + anchorShift;
         const targetAnchorY = node.baseY + Math.sin(time * (0.45 + bandWeight * 0.22) + node.phase) * (3 + bandWeight * 8);
 
-        const flow = 0.018 * globalSpeedMult + energy * 0.02 + bandWeight * 0.006;
+        const flow = (0.018 * globalSpeedMult + energy * 0.02 + bandWeight * 0.006) * mix(1.0, 0.64, calmProfile.calmBoost);
         node.anchorX += (targetAnchorX - node.anchorX) * flow;
         node.anchorY += (targetAnchorY - node.anchorY) * flow;
 
-        const calmNudge = 0.08 + energy * 0.18 + bandWeight * 0.12;
+        const calmNudge = (0.08 + energy * 0.18 + bandWeight * 0.12) * calmProfile.idleBreath;
         node.vx += (Math.sin(time * 0.36 + node.phase) * 0.15) * calmNudge * 0.35;
         node.vy += (Math.cos(time * 0.41 + node.phase) * 0.12) * calmNudge * 0.35;
 
-        const idleDrift = (0.006 + silence * 0.018) * CONFIG.idleNodeWander;
+        const idleDrift = (0.006 + silence * 0.018) * CONFIG.idleNodeWander * calmProfile.idleWander;
         node.vx += Math.sin(idlePhaseA + node.phase + node.seed * 7) * idleDrift;
         node.vy += Math.cos(idlePhaseB + node.phase + node.seed * 5) * idleDrift * 0.75;
 
         if (breakdownIntensity > 0.14) {
-          const chaos = breakdownIntensity * 12.0;
+          const chaos = breakdownIntensity * 12.0 * calmProfile.noise;
           node.vx += (Math.random() - 0.5) * chaos;
           node.vy += (Math.random() - 0.5) * chaos;
         }
@@ -614,14 +1446,27 @@
           }
         }
 
-        const softOrb = Math.sin(time * (0.42 * globalSpeedMult + node.drift * 2.4) + node.phase) * 18;
-        const softLift = Math.cos(time * 0.67 + node.phase) * 14;
+        const softOrb = Math.sin(time * (0.42 * globalSpeedMult + node.drift * 2.4) + node.phase) * (18 + energy * 24 + breakdownIntensity * 16) * calmProfile.swirl + Math.cos(time * 0.19 + node.seed * 11) * 6 * profile.spread * calmProfile.swirl;
+        const softLift = Math.cos(time * (0.67 + bandWeight * 0.05) + node.phase) * (14 + energy * 18) * calmProfile.swirl;
 
         node.x = node.ox + softOrb;
         node.y = node.oy + softLift;
-        node.radius = mix(node.radius, CONFIG.nodeBaseRadius + bandWeight * 4.8 + energy * CONFIG.nodeEnergyRadiusBoost + breakdownIntensity * 1.0, 0.08);
-        node.activity = clamp01(0.12 + bandWeight * 0.55 + energy * 0.16 + silence * 0.18 + breakdownIntensity * 0.22);
-        node.rot += (0.012 + treble * 0.06) * globalSpeedMult;
+        node.radius = mix(node.radius, CONFIG.nodeBaseRadius + bandWeight * 5.2 + energy * CONFIG.nodeEnergyRadiusBoost + breakdownIntensity * 1.2, 0.1);
+
+        let waveBoost = 0;
+        for (const wf of wavefronts) {
+          const dx = Math.abs(node.x - wf.x);
+          if (dx < wf.width) {
+            const pulse = 1 - dx / wf.width;
+            const lane = Math.abs(node.y - wf.y);
+            const lanePulse = lane < 220 ? 1 - lane / 220 : 0;
+            waveBoost += pulse * lanePulse * (0.14 + wf.alpha * 0.42);
+            if (node.kind === wf.kind) waveBoost += pulse * 0.06;
+          }
+        }
+
+        node.activity = clamp01(0.08 + bandWeight * 0.46 + energy * 0.18 + silence * 0.14 + breakdownIntensity * 0.2 + waveBoost - calmProfile.activityBias);
+        node.rot += (0.012 + treble * 0.08 + energy * 0.03) * globalSpeedMult;
       });
 
       nodes = nodes.filter(n => !n.dead);
@@ -641,13 +1486,41 @@
           const sameKind = node.kind === other.kind;
 
           const wheelDrive = breakdownIntensity;
-          const connectionDrive = Math.max(energy, wheelDrive * 0.95);
+          const nodeProfile = getBandProfile(node.kind);
+          const otherProfile = getBandProfile(other.kind);
+          const nodeSignal = getNodeSignal(node.kind, bass, vocal, treble);
+          const otherSignal = getNodeSignal(other.kind, bass, vocal, treble);
+          const bandMean = (nodeSignal + otherSignal) * 0.5;
+          const bandContrast = Math.abs(nodeSignal - otherSignal);
+          const geoSpan = Math.abs(node.x - other.x) / Math.max(width, 1);
+          const crossScreen = smoothstep(0.18, 0.82, geoSpan);
+          const spreadDrive = 0.72;
+
+          // Управление балансом: на низком значении рождаются более длинные мосты,
+          // на высоком — сеть становится локальнее и плотнее.
+          const nearPriority = clampRange(CONFIG.linkNearPriority, 0.2, 3.5);
+          const locality = clamp01((nearPriority - 0.2) / 3.3); // 0 = длинные мосты, 1 = локальные связи
+          const bridgeBias = 1 - locality;
+
+          const nearCurve = mix(0.72, 4.2, locality);
+          const localAffinity = Math.pow(proximity, nearCurve);
+          const longAffinity = Math.pow(1 - proximity, mix(0.58, 1.08, bridgeBias));
+          const distanceBias = mix(longAffinity, localAffinity, locality);
+
+          const bridgeRelax = 0.74 + bridgeBias * 0.88 + Math.max(0, 0.22 - locality * 0.1);
+          const farBridgeAffinity = smoothstep(0.52, 0.98, crossScreen) * 0.14 * bridgeRelax;
+
+          const baseDrive = energy * 0.92 + bandMean * 0.34 + wheelDrive * 0.88;
+          const connectionDrive = Math.max(baseDrive * (0.18 + distanceBias * 0.82) + farBridgeAffinity, 0.001);
           if (connectionDrive <= 0.001) continue;
 
-          let score = connectionDrive * (CONFIG.linkScoreEnergyWeight + proximity * CONFIG.linkScoreProximity);
-          score += connectionDrive * (sameKind ? CONFIG.linkSameClusterBonus : CONFIG.linkDiffClusterBonus);
-          score += connectionDrive * (nodeBand + otherBand) * CONFIG.linkAudioComboBonus;
-          score += (Math.random() - 0.5) * 0.01;
+          let score = connectionDrive * CONFIG.linkScoreEnergyWeight;
+          score += connectionDrive * distanceBias * (0.66 + (1 - locality) * 0.12);
+          score += connectionDrive * (sameKind ? CONFIG.linkSameClusterBonus : CONFIG.linkDiffClusterBonus + bandContrast * 0.06);
+          score += connectionDrive * (nodeSignal + otherSignal) * CONFIG.linkAudioComboBonus;
+          score += connectionDrive * farBridgeAffinity * 0.88;
+          score += locality * proximity * 0.06;
+          score += (Math.random() - 0.5) * 0.008;
 
           const key = pairKey(node, other), nx = -dy / dist, ny = dx / dist;
           const bendSeed = (node.phase + other.phase) * 0.5;
@@ -676,11 +1549,14 @@
         const dx = rec.b.x - rec.a.x, dy = rec.b.y - rec.a.y, dist = Math.hypot(dx, dy) || 1;
         const proximity = Math.max(0, 1 - dist / maxLinkDistance);
         const visualDrive = Math.max(energy, breakdownIntensity * 0.95);
-        const liveScore = rec.strength * (0.5 + visualDrive * 0.5) + rec.usage * 0.5 + proximity * 0.2;
-        if (liveScore <= CONFIG.linkSurvivalThreshold) continue;
-
         const nx = -dy / dist, ny = dx / dist;
+        const nearPriority = clampRange(CONFIG.linkNearPriority, 0.2, 3.5);
+        const locality = clamp01((nearPriority - 0.2) / 3.3);
+        const bridgeWeight = 1 - locality;
         const bend = Math.sin(time * 1.05 + dist * 0.018 + rec.phase + rec.bendSeed) * (dist * CONFIG.linkBendFactor) * (1 + breakdownIntensity * 1.8);
+        const bridgePreserve = bridgeWeight * Math.max(0, rec.strength) * 0.18 + bridgeWeight * (1 - proximity) * 0.16;
+        const liveScore = rec.strength * (0.5 + visualDrive * 0.5) + rec.usage * 0.5 + proximity * (0.10 + locality * 0.12) + bridgePreserve;
+        if (liveScore <= CONFIG.linkSurvivalThreshold) continue;
         linkPool.push({ a: rec.a, b: rec.b, strength: liveScore, usage: rec.usage, age: rec.age, cx: (rec.a.x + rec.b.x) / 2 + nx * bend, cy: (rec.a.y + rec.b.y) / 2 + ny * bend });
       }
 
@@ -693,13 +1569,16 @@
         b.life -= 0.018 * globalSpeedMult;
         if (b.alpha <= 0 || b.life <= 0) beatBridges.splice(i, 1);
       }
+      trimEffectQueue(beatBridges, 8);
 
       for (let i = bursts.length - 1; i >= 0; i--) {
         const b = bursts[i];
         b.r += (b.maxR - b.r) * (0.04 + energy * 0.05 + breakdownIntensity * 0.02) * globalSpeedMult;
-        b.alpha -= 0.017 * globalSpeedMult;
+        b.alpha -= (b.alphaDecay || 0.017) * globalSpeedMult;
+        b.spin = (b.spin || 0) + 0.02 * globalSpeedMult;
         if (b.alpha <= 0) bursts.splice(i, 1);
       }
+      trimEffectQueue(bursts, 18);
 
       for (let i = ripples.length - 1; i >= 0; i--) {
         const r = ripples[i];
@@ -714,6 +1593,24 @@
         ft.life -= globalSpeedMult;
       });
       floatingTexts = floatingTexts.filter(ft => ft.life > 0 && ft.alpha > 0);
+      trimEffectQueue(floatingTexts, 10);
+
+      wavefronts.forEach(wf => {
+        wf.x += wf.dir * wf.speed * globalSpeedMult;
+        wf.alpha -= (0.002 + wf.trail * 0.001) * globalSpeedMult;
+        wf.glow -= 0.0012 * globalSpeedMult;
+        wf.life -= 0.005 * globalSpeedMult;
+      });
+      wavefronts = wavefronts.filter(wf => wf.life > 0 && wf.alpha > 0 && wf.x > -CONFIG.wavefrontWidth * 2 && wf.x < width + CONFIG.wavefrontWidth * 2);
+      trimEffectQueue(wavefronts, 14);
+
+      currentChains.forEach(chain => {
+        chain.life -= 0.013 * globalSpeedMult;
+        chain.alpha -= 0.012 * globalSpeedMult;
+        chain.pulse += 0.02 * globalSpeedMult;
+      });
+      currentChains = currentChains.filter(chain => chain.life > 0 && chain.alpha > 0 && chain.nodes && chain.nodes.length > 1);
+      trimEffectQueue(currentChains, 10);
 
       const linkMap = new Map();
       for (const link of links) {
@@ -752,10 +1649,10 @@
         const proximityFactor = Math.max(0, Math.min(1, 1 - dist / (420 + energy * 360 + breakdownIntensity * 180)));
 
         let stepSpeed = isPulse
-          ? CONFIG.largePulseSpeed * (1 + energy * 3 + breakdownIntensity * 4.6)
+          ? CONFIG.largePulseSpeed * (1 + energy * 4 + breakdownIntensity * 5.2 + bass * 0.8 + treble * 0.7)
           : (CONFIG.smallParticleSpeed + (energy * CONFIG.smallParticleAudioReactive)) * (0.72 + proximityFactor * 0.95) + breakdownIntensity * 0.002 + proximityFactor * 0.004;
 
-        p.t += p.speedBase * stepSpeed;
+        p.t += p.speedBase * stepSpeed * (1 + energy * 0.45 + bass * 0.25 + treble * 0.2);
 
         if (p.t > 1) {
           p.t = 0;
@@ -897,6 +1794,56 @@
         ctx.fill();
       });
 
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      wavefronts.forEach(wf => {
+        const bandAlpha = Math.max(0, wf.alpha);
+        const bandGlow = wf.glow + motion.energy * 0.14;
+        const edgeWidth = wf.width * (0.48 + wf.thickness * 0.2);
+        const bandGrad = ctx.createLinearGradient(wf.x - edgeWidth, 0, wf.x + edgeWidth, 0);
+        bandGrad.addColorStop(0, `hsla(${wf.hue}, 100%, 62%, 0)`);
+        bandGrad.addColorStop(0.16, `hsla(${wf.hue}, 100%, 66%, ${bandAlpha * 0.18})`);
+        bandGrad.addColorStop(0.42, `hsla(${wf.hue}, 100%, ${72 + bandGlow * 8}%, ${bandAlpha * 0.7})`);
+        bandGrad.addColorStop(0.5, `hsla(${wf.hue}, 100%, ${78 + bandGlow * 6}%, ${bandAlpha})`);
+        bandGrad.addColorStop(0.58, `hsla(${wf.hue}, 100%, ${72 + bandGlow * 8}%, ${bandAlpha * 0.7})`);
+        bandGrad.addColorStop(0.84, `hsla(${wf.hue}, 100%, 66%, ${bandAlpha * 0.18})`);
+        bandGrad.addColorStop(1, `hsla(${wf.hue}, 100%, 62%, 0)`);
+
+        ctx.fillStyle = bandGrad;
+        ctx.fillRect(wf.x - edgeWidth, 0, edgeWidth * 2, height);
+
+        const strandCount = wf.mode === 'flash' ? 3 : wf.mode === 'filament' ? 4 : 5;
+        for (let s = 0; s < strandCount; s++) {
+          const strandPhase = wf.phase + s * 0.85;
+          const strandAmp = (wf.amp * (0.18 + s * 0.08) + motion.energy * 9) * (0.6 + wf.trail * 0.6);
+          ctx.strokeStyle = `hsla(${wf.hue}, 100%, ${78 + bandGlow * 8}%, ${bandAlpha * (0.12 + s * 0.09)})`;
+          ctx.lineWidth = 1 + bandGlow * 0.85 + s * 0.18;
+          ctx.beginPath();
+          for (let y = 0; y <= height; y += 28) {
+            const yNorm = y / Math.max(height, 1);
+            const drift = Math.sin(yNorm * Math.PI * 2 + strandPhase + time * (1.7 + wf.spark)) * strandAmp;
+            const drift2 = Math.cos(yNorm * Math.PI * 4 + strandPhase * 0.7 + time * 0.95) * (strandAmp * 0.35);
+            const x = wf.x + drift + drift2;
+            if (y === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+        }
+
+        ctx.strokeStyle = `hsla(${wf.hue}, 100%, 90%, ${bandAlpha * 0.28})`;
+        ctx.lineWidth = 1 + bandGlow * 1.2;
+        ctx.beginPath();
+        for (let y = 0; y <= height; y += 24) {
+          const yNorm = y / Math.max(height, 1);
+          const core = Math.sin(yNorm * Math.PI * 2 + wf.phase * 1.3 + time * 2.1) * (wf.amp * 0.55);
+          const x = wf.x + core;
+          if (y === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      });
+      ctx.restore();
+
       drawNotebookGrid(motion);
       ctx.globalCompositeOperation = 'lighter';
 
@@ -915,6 +1862,52 @@
         ctx.stroke();
       });
 
+      currentChains.forEach(chain => {
+        const pts = chain.nodes;
+        if (!pts || pts.length < 2) return;
+        const hue = chain.hue;
+        const pulseT = (chain.pulse + chain.phase * 0.08) % 1;
+        const pulseIndex = pulseT * (pts.length - 1);
+        const pulseBase = Math.floor(pulseIndex);
+        const pulseFrac = pulseIndex - pulseBase;
+        const pulseNode = pts[Math.min(pts.length - 1, pulseBase)];
+        const nextPulseNode = pts[Math.min(pts.length - 1, pulseBase + 1)] || pulseNode;
+
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        for (let i = 0; i < pts.length - 1; i++) {
+          const a = pts[i];
+          const b = pts[i + 1];
+          const dx = b.x - a.x;
+          const dy = b.y - a.y;
+          const dist = Math.hypot(dx, dy) || 1;
+          const nx = -dy / dist;
+          const ny = dx / dist;
+          const bend = Math.sin(chain.phase + i * 0.72 + time * (1.6 + chain.speed)) * dist * 0.14;
+          const cx = (a.x + b.x) * 0.5 + nx * bend;
+          const cy = (a.y + b.y) * 0.5 + ny * bend;
+          const segGrad = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
+          segGrad.addColorStop(0, `hsla(${hue}, 100%, 72%, ${chain.alpha * 0.08})`);
+          segGrad.addColorStop(0.5, `hsla(${hue}, 100%, 86%, ${chain.alpha * (0.38 + i * 0.04)})`);
+          segGrad.addColorStop(1, `hsla(${hue}, 100%, 72%, ${chain.alpha * 0.08})`);
+          ctx.strokeStyle = segGrad;
+          ctx.lineWidth = chain.thickness * (0.78 + chain.spread * 0.35) + i * 0.08;
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.quadraticCurveTo(cx, cy, b.x, b.y);
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = `hsla(${hue}, 100%, 92%, ${chain.alpha * 0.55})`;
+        ctx.beginPath();
+        ctx.arc(pulseNode.x, pulseNode.y, 2.8 + chain.thickness * 0.6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = `hsla(${hue}, 100%, 78%, ${chain.alpha * 0.28})`;
+        ctx.beginPath();
+        ctx.arc(nextPulseNode.x, nextPulseNode.y, 5.2 + chain.thickness * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
       ripples.forEach(rip => {
         ctx.beginPath();
         ctx.arc(rip.x, rip.y, rip.r, 0, Math.PI * 2);
@@ -924,14 +1917,41 @@
       });
 
       bursts.forEach(b => {
-        const burstGrad = ctx.createRadialGradient(b.x, b.y, b.r * 0.08, b.x, b.y, b.r);
-        burstGrad.addColorStop(0, `hsla(${b.hue}, 100%, 80%, 0)`);
-        burstGrad.addColorStop(0.35, `hsla(${b.hue}, 100%, 64%, ${b.alpha * 0.18})`);
-        burstGrad.addColorStop(1, `hsla(${b.hue}, 100%, 72%, ${b.alpha * 0.52})`);
-        ctx.fillStyle = burstGrad;
+        const t = clamp01(b.r / Math.max(b.maxR, 1));
+        const source = b.kind || 'auto';
+        const ringCount = b.rings || (source === 'mouse' ? PANEL_STATE.mouseSaluteRings : source === 'beat' ? 3 : 2);
+        const coreRadius = Math.max(4, b.r * (0.14 + t * 0.08));
+        const outerRadius = b.r * (0.76 + t * 0.26);
+
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+
+        const coreGrad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, outerRadius);
+        coreGrad.addColorStop(0, `hsla(${b.hue}, 100%, 94%, ${b.alpha * (source === 'mouse' ? 0.34 - t * 0.14 : 0.5 - t * 0.22)})`);
+        coreGrad.addColorStop(0.18, `hsla(${(b.hue + 12) % 360}, 100%, 80%, ${b.alpha * (source === 'mouse' ? 0.22 : 0.45)})`);
+        coreGrad.addColorStop(0.52, `hsla(${b.hue}, 100%, 68%, ${b.alpha * (source === 'mouse' ? 0.08 : 0.18)})`);
+        coreGrad.addColorStop(1, `hsla(${b.hue}, 100%, 62%, 0)`);
+        ctx.fillStyle = coreGrad;
         ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.arc(b.x, b.y, outerRadius, 0, Math.PI * 2);
         ctx.fill();
+
+        for (let rIdx = 0; rIdx < ringCount; rIdx++) {
+          const ringT = (rIdx + 1) / (ringCount + 0.5);
+          const rr = b.r * (0.72 + ringT * 0.95 + Math.sin(b.seed * 0.01 + time * 2.2 + rIdx) * 0.02);
+          ctx.lineWidth = 1.2 + rIdx * 0.9 + (source === 'mouse' ? 0.6 : 0);
+          ctx.strokeStyle = `hsla(${(b.hue + rIdx * 9) % 360}, 100%, ${72 + rIdx * 4}%, ${b.alpha * (0.40 - ringT * 0.08)})`;
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, rr, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+
+        ctx.fillStyle = `hsla(${b.hue}, 100%, 94%, ${b.alpha * 0.28})`;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, coreRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
       });
 
       ctx.globalCompositeOperation = 'screen';
@@ -1107,9 +2127,9 @@
         if (node.scale < 0.01) return;
         const hue = getXColor(node.x), radius = node.radius * node.scale;
         const breath = Math.pow(
-    (Math.sin(time * 2.8 + node.phase) + 1) * 0.5,
-    1.8
-);
+    (Math.sin(time * 3.1 + node.phase) + 1) * 0.5,
+    1.6
+) * (1 + motion.beatPulse * 0.65 + motion.snarePulse * 0.35);
         const nodeAudio = node.kind === 'bass' ? motion.bass : node.kind === 'vocal' ? motion.vocal : motion.treble;
         const currentRadiusMult =
     CONFIG.nodeGlowBaseMult +
@@ -1118,10 +2138,12 @@
 
         const glow = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, Math.max(0, radius * currentRadiusMult));
         const glowAlpha =
-    (0.15 +
-     node.activity * 0.25 +
-     breath * 0.25 +
-     breakdownIntensity * 0.05) * node.scale;
+    (0.16 +
+     node.activity * 0.27 +
+     breath * 0.28 +
+     motion.beatPulse * 0.12 +
+     motion.snarePulse * 0.08 +
+     breakdownIntensity * 0.06) * node.scale;
         glow.addColorStop(0, `hsla(${hue}, 100%, ${breakdownIntensity > 0.65 ? 58 : 62}%, ${glowAlpha})`);
         glow.addColorStop(0.65, `hsla(${hue}, 100%, ${breakdownIntensity > 0.65 ? 56 : 62}%, ${glowAlpha * 0.36})`);
         glow.addColorStop(1, `hsla(${hue}, 100%, 62%, 0)`);
@@ -1156,19 +2178,19 @@
       btn.textContent = 'Подключение...';
       try {
         mediaStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
-        if (!mediaStream.getAudioTracks().length) throw new Error('Нет звука');
+        if (!mediaStream.getAudioTracks().length) throw new Error('No audio track found');
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         source = audioCtx.createMediaStreamSource(mediaStream);
         analyser = audioCtx.createAnalyser();
         analyser.fftSize = 2048;
-        analyser.smoothingTimeConstant = 0.62;
+        analyser.smoothingTimeConstant = 0.45;
         freqData = new Uint8Array(analyser.frequencyBinCount);
         source.connect(analyser);
         audioEnabled = true;
         btn.style.display = 'none';
       } catch (err) {
         btn.disabled = false;
-        btn.textContent = 'Ошибка';
+        btn.textContent = 'Error';
       }
     }
 
@@ -1176,7 +2198,10 @@
       if (!audioEnabled) return;
       const rect = canvas.getBoundingClientRect(), clickX = e.clientX - rect.left, clickY = e.clientY - rect.top;
       ripples.push({ x: clickX, y: clickY, r: 0, speed: 12 * globalSpeedMult, alpha: 1, maxR: width * 1.5 });
-      bursts.push({ x: clickX, y: clickY, r: 10, maxR: 380, alpha: CONFIG.saluteOpacity, hue: getXColor(clickX) });
+      spawnSalute(clickX, clickY, 'mouse', Math.max(0.18, longTermEnergy + 0.08), lastBass, 0.5, lastTreble, getXColor(clickX));
+      trimEffectQueue(bursts, 18);
+      const mouseChain = makeCurrentChain('mouse', Math.max(0.28, longTermEnergy + 0.12), lastBass, 0.5, lastTreble, clickX, clickY);
+      if (mouseChain) { currentChains.push(mouseChain); trimEffectQueue(currentChains, 10); }
       nodes.forEach(n => {
         const dx = n.x - clickX, dy = n.y - clickY, dist = Math.hypot(dx, dy);
         if (dist < 600 && dist > 0) {
@@ -1200,6 +2225,27 @@
       e.preventDefault();
       breakdownTarget = clamp01(breakdownTarget + (e.deltaY > 0 ? -0.08 : 0.08));
     }, { passive: false });
+
+    if (calmSlider) {
+      calmSlider.addEventListener('input', (e) => syncCalmnessUI(e.target.value));
+      calmSlider.addEventListener('change', (e) => syncCalmnessUI(e.target.value));
+    }
+    buildDevPanel();
+    syncDevPanelVisibility();
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'F2') {
+        e.preventDefault();
+        toggleDevPanel();
+      }
+      if (e.key === 'Escape') {
+        toggleDevPanel(false);
+      }
+    });
+
+    if (devReset) {
+      devReset.addEventListener('click', () => resetDevState());
+    }
 
     btn.addEventListener('click', startAudio);
     window.addEventListener('resize', resize);
