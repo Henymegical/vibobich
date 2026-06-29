@@ -68,6 +68,7 @@
       box-shadow: 0 8px 24px rgba(0,0,0,0.2);
       backdrop-filter: blur(10px);
       transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, opacity 160ms ease;
+      margin-top: 30px;
     }
     .btn:hover {
       transform: translateY(-1px);
@@ -196,10 +197,6 @@
     .band-item[data-band="high"] .band-meter i {
       background: linear-gradient(90deg, rgba(255,255,255,0.18), rgba(190, 235, 255, 0.98));
     }
-    .btn {
-  margin-top: 30px; /* Увеличьте число, если нужно сместить еще ниже */
-}
-
   </style>
 </head>
 <body>
@@ -207,7 +204,7 @@
     <canvas id="bg"></canvas>
     <canvas id="art"></canvas>
     <button class="btn" id="btn" title="Подключить звук системы"><span class="btn-dot"></span><span>ПОДКЛЮЧИТЬ</span></button>
-    
+
     <div class="hud">
       <div class="hud-row">
         <span class="hud-brand">AUDIO REACTIVE</span>
@@ -241,38 +238,43 @@
       nodeEnergyRadiusBoost: 1.8,
       nodeGlowBaseMult: 2.8,
       nodeGlowAudioBoost: 2.2,
-      nodeGlowBreathRange: 0.6,
+      nodeGlowBreathRange: 1.0,
 
-      linkBaseCount: 60,            
-      linkAudioBoost: 400,           
-      linkSurvivalThreshold: 0.012, 
-      linkScoreEnergyWeight: 0.65,  
-      linkScoreProximity: 0.15,     
-      linkSameClusterBonus: 0.10,   
-      linkDiffClusterBonus: 0.09,   
-      linkAudioComboBonus: 0.18,    
-      linkMinAlpha: 0.01,          
-      linkEnergyAlphaBoost: 0.38,   
-      linkBaseWidth: 0.35,          
-      linkEnergyWidthBoost: 2,    
-      linkBendFactor: 0.2,          
+      linkBaseCount: 60,
+      linkAudioBoost: 400,
+      linkSurvivalThreshold: 0.012,
+      linkScoreEnergyWeight: 0.65,
+      linkScoreProximity: 0.15,
+      linkSameClusterBonus: 0.10,
+      linkDiffClusterBonus: 0.09,
+      linkAudioComboBonus: 0.18,
+      linkMinAlpha: 0.01,
+      linkEnergyAlphaBoost: 0.38,
+      linkBaseWidth: 0.35,
+      linkEnergyWidthBoost: 2,
+      linkBendFactor: 0.2,
 
       smallParticleCount: 200,
       smallParticleSpeed: 0.045,
       smallParticleAudioReactive: 0.013,
       largePulseSpeed: 0.0022,
 
-      speedBase: 0.25,              
-      speedEnergyMult: 2.2,         
-      beatKickThreshold: 0.38,      
-      beatKickRise: 0.08,           
-      trebleSnareThreshold: 0.28,   
+      speedBase: 0.25,
+      speedEnergyMult: 2.2,
+      beatKickThreshold: 0.38,
+      beatKickRise: 0.08,
+      trebleSnareThreshold: 0.28,
 
       gridCellSize: 104,
       gridWaveIntensity: 16,
       gridOpacity: 0.075,
       saluteOpacity: 0.82,
-      redDropMix: 0.92
+      redDropMix: 0.92,
+
+      idleNodeWander: 2.2,
+      idleNodeBreath: 4.2,
+      idleLinkBreath: 0.18,
+      idleGlowBoost: 0.16
     };
 
     const bgCanvas = document.getElementById('bg');
@@ -341,7 +343,7 @@
       const dist = Math.hypot(b.x - a.x, b.y - a.y) || 1;
       const maxDist = Math.hypot(width, height) * 0.65;
       const proximity = Math.max(0, 1 - dist / maxDist);
-      const distanceWeight = Math.pow(proximity, 3.5); 
+      const distanceWeight = Math.pow(proximity, 3.5);
 
       const whiteBlend = smoothstep(0.82, 0.995, breakdownIntensity) * whiteMask;
       const alpha = Math.max(CONFIG.linkMinAlpha, distanceWeight * 0.95 + strength * 0.12 + energy * CONFIG.linkEnergyAlphaBoost) * scaleCombo;
@@ -438,7 +440,9 @@
           bass,
           vocal,
           treble,
-          energy: 0.12 + wave * 0.08, beatPulse: 0
+          energy: 0.12 + wave * 0.08,
+          beatPulse: 0,
+          snarePulse: 0
         };
       }
       analyser.getByteFrequencyData(freqData);
@@ -518,7 +522,6 @@
         }
       }
 
-      // ТЕКСТ ТЕПЕРЬ ПОЯВЛЯЕТСЯ ВЕЗДЕ: Отвязано от "vocal", привязано к общей энергии и всем активным нодам
       if (energy > longTermEnergy * 1.2 && energy > 0.3 && Math.random() > 0.72) {
         const pool = nodes.filter(n => n.scale > 0.35 && n.activity > 0.3);
         if (pool.length > 0) {
@@ -552,6 +555,10 @@
         }
       }
 
+      const silence = clamp01(1 - Math.max(energy, breakdownIntensity * 0.95) * 3.6);
+      const idlePhaseA = time * (0.18 + silence * 0.12);
+      const idlePhaseB = time * (0.27 + silence * 0.09);
+
       nodes.forEach(node => {
         if (node.state === 'in') {
           node.scale += 0.045 * globalSpeedMult;
@@ -565,8 +572,8 @@
         const laneSide = node.kind === 'bass' ? -1 : node.kind === 'treble' ? 1 : 0;
         const laneBias = width * 0.04 * laneSide * (0.35 + bandWeight * 0.85);
         const centerPull = (width * 0.5 - node.baseX) * (energy - 0.45) * 0.04;
-        const audioScatter = Math.sin(time * 0.8 + node.seed * 10) * (width * 0.2) * energy; 
-        
+        const audioScatter = Math.sin(time * 0.8 + node.seed * 10) * (width * 0.2) * energy;
+
         const anchorShift = laneBias + centerPull + audioScatter;
         const targetAnchorX = node.baseX + anchorShift;
         const targetAnchorY = node.baseY + Math.sin(time * (0.45 + bandWeight * 0.22) + node.phase) * (3 + bandWeight * 8);
@@ -576,39 +583,51 @@
         node.anchorY += (targetAnchorY - node.anchorY) * flow;
 
         const calmNudge = 0.08 + energy * 0.18 + bandWeight * 0.12;
-        node.vx += (Math.sin(time * 0.36 + node.phase) * 0.15) * calmNudge * 0.12;
-        node.vy += (Math.cos(time * 0.41 + node.phase) * 0.12) * calmNudge * 0.12;
+        node.vx += (Math.sin(time * 0.36 + node.phase) * 0.15) * calmNudge * 0.35;
+        node.vy += (Math.cos(time * 0.41 + node.phase) * 0.12) * calmNudge * 0.35;
+
+        const idleDrift = (0.006 + silence * 0.018) * CONFIG.idleNodeWander;
+        node.vx += Math.sin(idlePhaseA + node.phase + node.seed * 7) * idleDrift;
+        node.vy += Math.cos(idlePhaseB + node.phase + node.seed * 5) * idleDrift * 0.75;
 
         if (breakdownIntensity > 0.14) {
-          const chaos = breakdownIntensity * 12.0; 
-          node.vx += (Math.random() - 0.5) * chaos; node.vy += (Math.random() - 0.5) * chaos;
+          const chaos = breakdownIntensity * 12.0;
+          node.vx += (Math.random() - 0.5) * chaos;
+          node.vy += (Math.random() - 0.5) * chaos;
         }
 
-        node.ox += node.vx; node.oy += node.vy; node.vx *= 0.88; node.vy *= 0.88;
-        node.ox += (node.anchorX - node.ox) * 0.06; node.oy += (node.anchorY - node.oy) * 0.06;
+        node.ox += node.vx;
+        node.oy += node.vy;
+        node.vx *= 0.88;
+        node.vy *= 0.88;
+
+        node.ox += (node.anchorX - node.ox) * 0.06;
+        node.oy += (node.anchorY - node.oy) * 0.06;
 
         if (mouse.active) {
           const dx = node.ox - mouse.x, dy = node.oy - mouse.y, dist = Math.hypot(dx, dy);
           const repelRadius = 180 + energy * 110;
           if (dist < repelRadius && dist > 0) {
             const force = (repelRadius - dist) / repelRadius;
-            node.vx += (dx / dist) * force * 2.3; node.vy += (dy / dist) * force * 2.3;
+            node.vx += (dx / dist) * force * 2.3;
+            node.vy += (dy / dist) * force * 2.3;
           }
         }
 
-        const softOrb = Math.sin(time * (0.42 * globalSpeedMult + node.drift * 2.4) + node.phase) * (4.5 + bandWeight * 5.5);
-        const softLift = Math.cos(time * 0.67 + node.phase) * (3.5 + energy * 5.5);
+        const softOrb = Math.sin(time * (0.42 * globalSpeedMult + node.drift * 2.4) + node.phase) * 18;
+        const softLift = Math.cos(time * 0.67 + node.phase) * 14;
 
-        node.x = node.ox + softOrb; node.y = node.oy + softLift;
+        node.x = node.ox + softOrb;
+        node.y = node.oy + softLift;
         node.radius = mix(node.radius, CONFIG.nodeBaseRadius + bandWeight * 4.8 + energy * CONFIG.nodeEnergyRadiusBoost + breakdownIntensity * 1.0, 0.08);
-        node.activity = clamp01(0.15 + bandWeight * 0.65 + energy * 0.2 + breakdownIntensity * 0.22);
+        node.activity = clamp01(0.12 + bandWeight * 0.55 + energy * 0.16 + silence * 0.18 + breakdownIntensity * 0.22);
         node.rot += (0.012 + treble * 0.06) * globalSpeedMult;
       });
 
       nodes = nodes.filter(n => !n.dead);
       const activeNodes = nodes.filter(n => n.activity > 0.18 && n.scale > 0.1);
       const seenPairs = new Set();
-      const maxLinkDistance = Math.hypot(width, height) * 1.2; 
+      const maxLinkDistance = Math.hypot(width, height) * 1.2;
 
       activeNodes.forEach((node, i) => {
         const nodeBand = node.kind === 'bass' ? bass : node.kind === 'vocal' ? vocal : treble;
@@ -620,16 +639,19 @@
 
           const otherBand = other.kind === 'bass' ? bass : other.kind === 'vocal' ? vocal : treble;
           const sameKind = node.kind === other.kind;
-          
-          let score = 0.12 + energy * CONFIG.linkScoreEnergyWeight; 
-          score += proximity * CONFIG.linkScoreProximity;
-          score += sameKind ? CONFIG.linkSameClusterBonus : CONFIG.linkDiffClusterBonus;
-          score += (nodeBand + otherBand) * CONFIG.linkAudioComboBonus;
-          score += breakdownIntensity * 0.03 + (Math.random() - 0.5) * 0.03;
+
+          const wheelDrive = breakdownIntensity;
+          const connectionDrive = Math.max(energy, wheelDrive * 0.95);
+          if (connectionDrive <= 0.001) continue;
+
+          let score = connectionDrive * (CONFIG.linkScoreEnergyWeight + proximity * CONFIG.linkScoreProximity);
+          score += connectionDrive * (sameKind ? CONFIG.linkSameClusterBonus : CONFIG.linkDiffClusterBonus);
+          score += connectionDrive * (nodeBand + otherBand) * CONFIG.linkAudioComboBonus;
+          score += (Math.random() - 0.5) * 0.01;
 
           const key = pairKey(node, other), nx = -dy / dist, ny = dx / dist;
           const bendSeed = (node.phase + other.phase) * 0.5;
-          
+
           let rec = linkMemory.get(key);
           if (!rec) rec = { a: node, b: other, strength: score, usage: score * 0.35, age: 0, phase: Math.random() * Math.PI * 2, bendSeed, lastScore: score, whiteMask: hash01(key) < 0.5 ? 1 : 0 };
           if (breakdownIntensity > 0.96) rec.whiteMask = hash01(key) < 0.5 ? 1 : 0;
@@ -647,12 +669,14 @@
         if (rec.strength < 0.012 && rec.usage < 0.008) linkMemory.delete(key);
       }
 
-      links.length = 0; const linkPool = [];
+      links.length = 0;
+      const linkPool = [];
       for (const rec of linkMemory.values()) {
         if (!rec.a || !rec.b || rec.a.dead || rec.b.dead || rec.a.scale < 0.08 || rec.b.scale < 0.08) continue;
         const dx = rec.b.x - rec.a.x, dy = rec.b.y - rec.a.y, dist = Math.hypot(dx, dy) || 1;
         const proximity = Math.max(0, 1 - dist / maxLinkDistance);
-        const liveScore = rec.strength * (0.5 + energy * 0.5) + rec.usage * 0.5 + proximity * 0.2;
+        const visualDrive = Math.max(energy, breakdownIntensity * 0.95);
+        const liveScore = rec.strength * (0.5 + visualDrive * 0.5) + rec.usage * 0.5 + proximity * 0.2;
         if (liveScore <= CONFIG.linkSurvivalThreshold) continue;
 
         const nx = -dy / dist, ny = dx / dist;
@@ -662,10 +686,11 @@
 
       linkPool.sort((a, b) => b.strength - a.strength);
       links.push(...linkPool.slice(0, Math.min(linkPool.length, Math.floor(CONFIG.linkBaseCount + energy * CONFIG.linkAudioBoost))));
-      
+
       for (let i = beatBridges.length - 1; i >= 0; i--) {
         const b = beatBridges[i];
-        b.alpha -= 0.018 * globalSpeedMult; b.life -= 0.018 * globalSpeedMult;
+        b.alpha -= 0.018 * globalSpeedMult;
+        b.life -= 0.018 * globalSpeedMult;
         if (b.alpha <= 0 || b.life <= 0) beatBridges.splice(i, 1);
       }
 
@@ -677,24 +702,30 @@
       }
 
       for (let i = ripples.length - 1; i >= 0; i--) {
-        const r = ripples[i]; r.r += r.speed; r.alpha -= 0.013 * globalSpeedMult;
+        const r = ripples[i];
+        r.r += r.speed;
+        r.alpha -= 0.013 * globalSpeedMult;
         if (r.alpha <= 0 || r.r > r.maxR) ripples.splice(i, 1);
       }
 
-      floatingTexts.forEach(ft => { ft.y -= 0.38 * globalSpeedMult + breakdownIntensity * 1.2; ft.alpha -= 0.02 * globalSpeedMult; ft.life -= globalSpeedMult; });
+      floatingTexts.forEach(ft => {
+        ft.y -= 0.38 * globalSpeedMult + breakdownIntensity * 1.2;
+        ft.alpha -= 0.02 * globalSpeedMult;
+        ft.life -= globalSpeedMult;
+      });
       floatingTexts = floatingTexts.filter(ft => ft.life > 0 && ft.alpha > 0);
 
       const linkMap = new Map();
       for (const link of links) {
         if (!linkMap.has(link.a)) linkMap.set(link.a, []);
         if (!linkMap.has(link.b)) linkMap.set(link.b, []);
-        linkMap.get(link.a).push(link); linkMap.get(link.b).push(link);
+        linkMap.get(link.a).push(link);
+        linkMap.get(link.b).push(link);
       }
 
-      // ПРОВЕРКА СВЯЗЕЙ: Частицы двигаются только по реально существующим видимым соединениям
       const processParticle = (p, isPulse) => {
         let needsNewLink = false;
-        
+
         if (!p.from || !p.to || p.from.dead || p.to.dead) {
           needsNewLink = true;
         } else {
@@ -708,29 +739,41 @@
             const randLink = links[(Math.random() * links.length) | 0];
             p.from = randLink.a;
             p.to = randLink.b;
-            p.t = Math.random(); 
+            p.t = Math.random();
           } else {
-            return; 
+            p.from = null;
+            p.to = null;
+            p.linkAlpha = 0;
+            return;
           }
         }
 
         const dx = p.to.x - p.from.x, dy = p.to.y - p.from.y, dist = Math.hypot(dx, dy) || 1;
         const proximityFactor = Math.max(0, Math.min(1, 1 - dist / (420 + energy * 360 + breakdownIntensity * 180)));
 
-        let stepSpeed = isPulse ? CONFIG.largePulseSpeed * (1 + energy * 3 + breakdownIntensity * 4.6) : (CONFIG.smallParticleSpeed + (energy * CONFIG.smallParticleAudioReactive)) * (0.72 + proximityFactor * 0.95) + breakdownIntensity * 0.002 + proximityFactor * 0.004;
+        let stepSpeed = isPulse
+          ? CONFIG.largePulseSpeed * (1 + energy * 3 + breakdownIntensity * 4.6)
+          : (CONFIG.smallParticleSpeed + (energy * CONFIG.smallParticleAudioReactive)) * (0.72 + proximityFactor * 0.95) + breakdownIntensity * 0.002 + proximityFactor * 0.004;
+
         p.t += p.speedBase * stepSpeed;
 
         if (p.t > 1) {
-          p.t = 0; p.from = p.to;
+          p.t = 0;
+          p.from = p.to;
           const neighbors = linkMap.get(p.from) || [];
           if (neighbors.length > 0) {
             const total = neighbors.reduce((sum, l) => sum + Math.max(0.02, l.strength), 0);
             let pick = Math.random() * total, chosen = neighbors[0];
-            for (const l of neighbors) { pick -= Math.max(0.02, l.strength); if (pick <= 0) { chosen = l; break; } }
+            for (const l of neighbors) {
+              pick -= Math.max(0.02, l.strength);
+              if (pick <= 0) { chosen = l; break; }
+            }
             p.to = chosen.a === p.from ? chosen.b : chosen.a;
-          } else { 
+          } else {
             p.from = null;
-            return; 
+            p.to = null;
+            p.linkAlpha = 0;
+            return;
           }
         }
 
@@ -741,15 +784,15 @@
         const mt = 1 - p.t;
         p.x = mt * mt * p.from.x + 2 * mt * p.t * cx + p.t * p.t * p.to.x;
         p.y = mt * mt * p.from.y + 2 * mt * p.t * cy + p.t * p.t * p.to.y;
-        
+
         let strength = 0;
         const neighbors = linkMap.get(p.from) || [];
         const activeLink = neighbors.find(l => (l.a === p.from && l.b === p.to) || (l.a === p.to && l.b === p.from));
         if (activeLink) strength = activeLink.strength;
-        
+
         const scaleCombo = Math.min(p.from.scale, p.to.scale);
         const vis = getLinkVisuals(p.from, p.to, strength, energy, scaleCombo);
-        
+
         p.hue = vis.hue;
         p.linkAlpha = vis.alpha;
         p.scale = scaleCombo;
@@ -769,7 +812,8 @@
         canvas.style.filter = `hue-rotate(${hueShift}deg) contrast(${contrast}) saturate(${saturate}) sepia(${sepia})${invert}`;
         canvas.style.transform = `translate(${shakeX}px, ${shakeY}px) scale(${1 + breakdownIntensity * 0.05})`;
       } else {
-        canvas.style.filter = 'none'; canvas.style.transform = 'translateZ(0)';
+        canvas.style.filter = 'none';
+        canvas.style.transform = 'translateZ(0)';
       }
 
       return { bass, vocal, treble, energy, beatPulse: Math.max(0, kickTimer / 10), snarePulse: Math.max(0, snareTimer / 7) };
@@ -796,11 +840,12 @@
           if (i === -2) ctx.moveTo(ox + waveX, oy + waveY); else ctx.lineTo(ox + waveX, oy + waveY);
         }
       }
-      ctx.stroke(); ctx.restore();
+      ctx.stroke();
+      ctx.restore();
     }
 
     function drawScene(motion) {
-
+      const silence = clamp01(1 - Math.max(motion.energy, breakdownIntensity * 0.95) * 3.6);
       const eqLift = motion.energy * 0.28 + motion.vocal * 0.12;
       const stereoShift = (motion.treble - motion.bass) * width * 0.03;
       const redDrop = Math.min(1, breakdownIntensity), redMix = redDrop * redDrop;
@@ -809,7 +854,8 @@
       grad.addColorStop(0, `hsla(${(globalHueOffset + 6) % 360}, 48%, ${3.5 - redMix * 0.6}%, 1)`);
       grad.addColorStop(0.5, `hsla(${(globalHueOffset + 42) % 360}, 30%, ${5.5 - redMix * 0.9}%, 1)`);
       grad.addColorStop(1, `hsla(${(globalHueOffset + 92) % 360}, 22%, ${2.8 - redMix * 0.5}%, 1)`);
-      bgCtx.fillStyle = grad; bgCtx.fillRect(0, 0, width, height);
+      bgCtx.fillStyle = grad;
+      bgCtx.fillRect(0, 0, width, height);
 
       if (breakdownIntensity > 0) {
         bgCtx.fillStyle = `rgba(${90 + redMix * 150}, ${0 + redMix * 18}, ${0 + redMix * 18}, ${breakdownIntensity * 0.6})`;
@@ -832,7 +878,8 @@
       baseGlow.addColorStop(0.35, `rgba(${75 + redMix * 180}, ${120 - redMix * 120}, ${255 - redMix * 210}, ${0.03 + motion.vocal * 0.02 + redMix * 0.02})`);
       baseGlow.addColorStop(0.72, `rgba(${180 + redMix * 75}, ${70 - redMix * 60}, ${255 - redMix * 210}, ${0.015 + motion.treble * 0.018 + redMix * 0.02})`);
       baseGlow.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = baseGlow; ctx.fillRect(0, 0, width, height);
+      ctx.fillStyle = baseGlow;
+      ctx.fillRect(0, 0, width, height);
 
       ctx.globalCompositeOperation = 'screen';
       backgroundOrbs.forEach((orb, index) => {
@@ -844,25 +891,36 @@
         const orbGrad = ctx.createRadialGradient(ox, oy, 0, ox, oy, radius);
         orbGrad.addColorStop(0, `hsla(${(globalHueOffset + orb.angle * 28 + index * 18) % 360}, 88%, 56%, ${0.03 + motion.energy * 0.04 + breakdownIntensity * 0.07})`);
         orbGrad.addColorStop(1, `hsla(${(globalHueOffset + orb.angle * 28 + index * 18) % 360}, 88%, 56%, 0)`);
-        ctx.fillStyle = orbGrad; ctx.beginPath(); ctx.arc(ox, oy, radius, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = orbGrad;
+        ctx.beginPath();
+        ctx.arc(ox, oy, radius, 0, Math.PI * 2);
+        ctx.fill();
       });
 
       drawNotebookGrid(motion);
       ctx.globalCompositeOperation = 'lighter';
 
       beatBridges.forEach(b => {
-        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
         const grad = ctx.createLinearGradient(b.a.x, b.a.y, b.b.x, b.b.y);
         grad.addColorStop(0, `hsla(${b.hueA}, 100%, 68%, ${b.alpha * 0.15})`);
         grad.addColorStop(0.45, `hsla(${(b.hueA + b.hueB) / 2}, 100%, 75%, ${b.alpha * 0.48})`);
         grad.addColorStop(1, `hsla(${b.hueB}, 100%, 68%, 0)`);
-        ctx.strokeStyle = grad; ctx.lineWidth = 1.8 + motion.energy * 2.2 + breakdownIntensity * 1.4;
-        ctx.beginPath(); ctx.moveTo(b.a.x, b.a.y); ctx.quadraticCurveTo(b.cx, b.cy, b.b.x, b.b.y); ctx.stroke();
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 1.8 + motion.energy * 2.2 + breakdownIntensity * 1.4;
+        ctx.beginPath();
+        ctx.moveTo(b.a.x, b.a.y);
+        ctx.quadraticCurveTo(b.cx, b.cy, b.b.x, b.b.y);
+        ctx.stroke();
       });
 
       ripples.forEach(rip => {
-        ctx.beginPath(); ctx.arc(rip.x, rip.y, rip.r, 0, Math.PI * 2);
-        ctx.lineWidth = 2 + rip.alpha * 7; ctx.strokeStyle = `hsla(${(globalHueOffset + motion.treble * 20) % 360}, 100%, 72%, ${rip.alpha * 0.48})`; ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(rip.x, rip.y, rip.r, 0, Math.PI * 2);
+        ctx.lineWidth = 2 + rip.alpha * 7;
+        ctx.strokeStyle = `hsla(${(globalHueOffset + motion.treble * 20) % 360}, 100%, 72%, ${rip.alpha * 0.48})`;
+        ctx.stroke();
       });
 
       bursts.forEach(b => {
@@ -870,7 +928,10 @@
         burstGrad.addColorStop(0, `hsla(${b.hue}, 100%, 80%, 0)`);
         burstGrad.addColorStop(0.35, `hsla(${b.hue}, 100%, 64%, ${b.alpha * 0.18})`);
         burstGrad.addColorStop(1, `hsla(${b.hue}, 100%, 72%, ${b.alpha * 0.52})`);
-        ctx.fillStyle = burstGrad; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = burstGrad;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.fill();
       });
 
       ctx.globalCompositeOperation = 'screen';
@@ -879,7 +940,10 @@
         ctx.fillRect(0, 0, width, height);
       }
       if (breakdownIntensity > 0.78 && Math.random() > 0.62) {
-        ctx.globalCompositeOperation = 'screen'; ctx.fillStyle = `rgba(255,255,255,${0.03 + breakdownIntensity * 0.06})`; ctx.fillRect(0, 0, width, height); ctx.globalCompositeOperation = 'source-over';
+        ctx.globalCompositeOperation = 'screen';
+        ctx.fillStyle = `rgba(255,255,255,${0.03 + breakdownIntensity * 0.06})`;
+        ctx.fillRect(0, 0, width, height);
+        ctx.globalCompositeOperation = 'source-over';
       }
 
       links.forEach(link => {
@@ -888,7 +952,8 @@
 
         const vis = getLinkVisuals(link.a, link.b, link.strength, motion.energy, scaleCombo, link.whiteMask || 0);
         const whiteGlow = vis.whiteBlend;
-        const linkWidth = (CONFIG.linkBaseWidth + vis.proximity * 0.3 + link.strength * 0.8 + motion.energy * CONFIG.linkEnergyWidthBoost + breakdownIntensity * 0.8) * scaleCombo;
+        const idleLinkBreath = 1 + silence * CONFIG.idleLinkBreath * (0.6 + 0.4 * Math.sin(time * 0.38 + link.a.seed * 6 + link.b.seed * 4));
+        const linkWidth = (CONFIG.linkBaseWidth + vis.proximity * 0.3 + link.strength * 0.8 + motion.energy * CONFIG.linkEnergyWidthBoost + breakdownIntensity * 0.8) * scaleCombo * idleLinkBreath;
 
         const grad = ctx.createLinearGradient(link.a.x, link.a.y, link.b.x, link.b.y);
         const edgeAlpha = Math.max(0.06, vis.alpha * (0.7 - whiteGlow * 0.18));
@@ -930,7 +995,6 @@
         ctx.restore();
       });
 
-      // ИСПРАВЛЕНИЕ ЦВЕТОВ ЧАСТИЦ: снижена яркость до 72% и 68%, чтобы цвет не выгорал в белый
       pulses.forEach(p => {
         if (!p.from || !p.to) return;
         ctx.beginPath();
@@ -939,74 +1003,52 @@
         ctx.fill();
       });
 
-
-
       ctx.globalAlpha = 1;
       particles.forEach(p => {
-          if (!p.scale || p.scale < 0.1 || !p.from) return;
+        if (!p.scale || p.scale < 0.1 || !p.from) return;
 
-          // направление движения
-          const dx = p.to.x - p.from.x;
-          const dy = p.to.y - p.from.y;
-          const angle = Math.atan2(dy, dx);
+        const dx = p.to.x - p.from.x;
+        const dy = p.to.y - p.from.y;
+        const angle = Math.atan2(dy, dx);
 
-          const len = (1.0 + p.linkAlpha * 2) * p.scale;
-          const width = (0.2 + p.linkAlpha * 0.8) * p.scale;
+        const len = (1.0 + p.linkAlpha * 2) * p.scale;
+        const width = (0.2 + p.linkAlpha * 0.8) * p.scale;
 
-          ctx.save();
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(angle);
 
-          ctx.translate(p.x, p.y);
-          ctx.rotate(angle);
+        const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, len * 1.5);
+        glow.addColorStop(0.0, `hsla(${p.hue},100%,96%,${Math.min(1,p.linkAlpha*3.8)})`);
+        glow.addColorStop(0.35, `hsla(${p.hue},100%,78%,${Math.min(1,p.linkAlpha*2.1)})`);
+        glow.addColorStop(1.0, `hsla(${p.hue},100%,60%,0)`);
 
-          // плазменное свечение
-          const glow = ctx.createRadialGradient(
-              0,
-              0,
-              0,
-              0,
-              0,
-              len * 1.5
-          );
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(0,0,len*0.8,0,Math.PI*2);
+        ctx.fill();
 
-          glow.addColorStop(0.0, `hsla(${p.hue},100%,96%,${Math.min(1,p.linkAlpha*3.8)})`);
-          glow.addColorStop(0.35, `hsla(${p.hue},100%,78%,${Math.min(1,p.linkAlpha*2.1)})`);
-          glow.addColorStop(1.0, `hsla(${p.hue},100%,60%,0)`);
+        const grad = ctx.createLinearGradient(-len,0,len,0);
+        grad.addColorStop(0,"rgba(255,255,255,0)");
+        grad.addColorStop(0.18,`hsla(${p.hue},100%,74%,${p.linkAlpha*0.7})`);
+        grad.addColorStop(0.50,"rgba(255,255,255,0.98)");
+        grad.addColorStop(0.82,`hsla(${p.hue},100%,74%,${p.linkAlpha*0.7})`);
+        grad.addColorStop(1,"rgba(255,255,255,0)");
 
-          ctx.fillStyle = glow;
-          ctx.beginPath();
-          ctx.arc(0,0,len*0.8,0,Math.PI*2);
-          ctx.fill();
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.ellipse(0,0,len,width,0,0,Math.PI*2);
+        ctx.fill();
 
-          // вытянутый энергетический сгусток
-          const grad = ctx.createLinearGradient(-len,0,len,0);
-
-          grad.addColorStop(0,"rgba(255,255,255,0)");
-          grad.addColorStop(0.18,`hsla(${p.hue},100%,74%,${p.linkAlpha*0.7})`);
-          grad.addColorStop(0.50,"rgba(255,255,255,0.98)");
-          grad.addColorStop(0.82,`hsla(${p.hue},100%,74%,${p.linkAlpha*0.7})`);
-          grad.addColorStop(1,"rgba(255,255,255,0)");
-
-          ctx.fillStyle = grad;
-
-          ctx.beginPath();
-          ctx.ellipse(
-              0,
-              0,
-              len,
-              width,
-              0,
-              0,
-              Math.PI*2
-          );
-          ctx.fill();
-
-          ctx.restore();
+        ctx.restore();
       });
 
       if (floatingTexts.length > 0) {
-        ctx.font = 'bold 11px monospace'; ctx.textAlign = 'center';
+        ctx.font = 'bold 11px monospace';
+        ctx.textAlign = 'center';
         floatingTexts.forEach(ft => {
-          ctx.fillStyle = `rgba(${180 * (1 - breakdownIntensity) + 255 * breakdownIntensity}, 255, 255, ${ft.alpha})`; ctx.fillText(ft.text, ft.x, ft.y);
+          ctx.fillStyle = `rgba(${180 * (1 - breakdownIntensity) + 255 * breakdownIntensity}, 255, 255, ${ft.alpha})`;
+          ctx.fillText(ft.text, ft.x, ft.y);
         });
       }
 
@@ -1018,10 +1060,16 @@
         }
       }
       if (breakdownIntensity > 0.8 && Math.random() > 0.55) {
-        ctx.globalCompositeOperation = 'screen'; ctx.fillStyle = `rgba(255, 0, 0, ${0.07 + breakdownIntensity * 0.2})`; ctx.fillRect(0, 0, width, height); ctx.globalCompositeOperation = 'source-over';
+        ctx.globalCompositeOperation = 'screen';
+        ctx.fillStyle = `rgba(255, 0, 0, ${0.07 + breakdownIntensity * 0.2})`;
+        ctx.fillRect(0, 0, width, height);
+        ctx.globalCompositeOperation = 'source-over';
       }
       if (breakdownIntensity > 0.74 && Math.random() > 0.55) {
-        ctx.globalCompositeOperation = 'screen'; ctx.fillStyle = `rgba(255, 0, 0, ${0.08 + breakdownIntensity * 0.18})`; ctx.fillRect(0, 0, width, height); ctx.globalCompositeOperation = 'source-over';
+        ctx.globalCompositeOperation = 'screen';
+        ctx.fillStyle = `rgba(255, 0, 0, ${0.08 + breakdownIntensity * 0.18})`;
+        ctx.fillRect(0, 0, width, height);
+        ctx.globalCompositeOperation = 'source-over';
       }
 
       if (breakdownIntensity > 0.985) {
@@ -1051,43 +1099,77 @@
       vignette.addColorStop(0, `rgba(255,255,255,${0.018 + motion.energy * 0.008})`);
       vignette.addColorStop(0.64, 'rgba(0,0,0,0)');
       vignette.addColorStop(1, `rgba(0,0,0,${0.44 + breakdownIntensity * 0.06})`);
-      ctx.globalCompositeOperation = 'screen'; ctx.fillStyle = vignette; ctx.fillRect(0, 0, width, height);
+      ctx.globalCompositeOperation = 'screen';
+      ctx.fillStyle = vignette;
+      ctx.fillRect(0, 0, width, height);
+
       nodes.forEach(node => {
         if (node.scale < 0.01) return;
         const hue = getXColor(node.x), radius = node.radius * node.scale;
-        const breath = (Math.sin(time * 2.5 + node.phase) + 1) * 0.5; 
+        const breath = Math.pow(
+    (Math.sin(time * 2.8 + node.phase) + 1) * 0.5,
+    1.8
+);
         const nodeAudio = node.kind === 'bass' ? motion.bass : node.kind === 'vocal' ? motion.vocal : motion.treble;
-        const currentRadiusMult = CONFIG.nodeGlowBaseMult + (nodeAudio * CONFIG.nodeGlowAudioBoost) - (breath * CONFIG.nodeGlowBreathRange);
+        const currentRadiusMult =
+    CONFIG.nodeGlowBaseMult +
+    (nodeAudio * CONFIG.nodeGlowAudioBoost) +
+    (breath * CONFIG.nodeGlowBreathRange);
 
         const glow = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, Math.max(0, radius * currentRadiusMult));
-        const glowAlpha = (0.2 + node.activity * 0.2 + breakdownIntensity * 0.05) * node.scale;
+        const glowAlpha =
+    (0.15 +
+     node.activity * 0.25 +
+     breath * 0.25 +
+     breakdownIntensity * 0.05) * node.scale;
         glow.addColorStop(0, `hsla(${hue}, 100%, ${breakdownIntensity > 0.65 ? 58 : 62}%, ${glowAlpha})`);
         glow.addColorStop(0.65, `hsla(${hue}, 100%, ${breakdownIntensity > 0.65 ? 56 : 62}%, ${glowAlpha * 0.36})`);
         glow.addColorStop(1, `hsla(${hue}, 100%, 62%, 0)`);
-        
-        ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(node.x, node.y, Math.max(0, radius * currentRadiusMult), 0, Math.PI * 2); ctx.fill();
+
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, Math.max(0, radius * currentRadiusMult), 0, Math.PI * 2);
+        ctx.fill();
 
         ctx.globalAlpha = (0.78 + node.activity * 0.18) * node.scale;
-        ctx.beginPath(); ctx.arc(node.x, node.y, radius, 0, Math.PI * 2); ctx.fillStyle = `hsla(${hue}, 18%, 96%, 0.98)`; ctx.fill();
-        ctx.beginPath(); ctx.arc(node.x - radius * 0.14, node.y - radius * 0.14, radius * 0.34, 0, Math.PI * 2); ctx.fillStyle = `hsla(${hue}, 100%, 94%, 0.8)`; ctx.fill();
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${hue}, 18%, 96%, 0.98)`;
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(node.x - radius * 0.14, node.y - radius * 0.14, radius * 0.34, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${hue}, 100%, 94%, 0.8)`;
+        ctx.fill();
       });
+
       ctx.restore();
     }
 
-    function animate() { drawScene(updateScene(readAudio())); requestAnimationFrame(animate); }
+    function animate() {
+      drawScene(updateScene(readAudio()));
+      requestAnimationFrame(animate);
+    }
 
     async function startAudio() {
       if (audioEnabled) return;
-      btn.disabled = true; btn.textContent = 'Подключение...';
+      btn.disabled = true;
+      btn.textContent = 'Подключение...';
       try {
         mediaStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
         if (!mediaStream.getAudioTracks().length) throw new Error('Нет звука');
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         source = audioCtx.createMediaStreamSource(mediaStream);
-        analyser = audioCtx.createAnalyser(); analyser.fftSize = 2048; analyser.smoothingTimeConstant = 0.62;
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 2048;
+        analyser.smoothingTimeConstant = 0.62;
         freqData = new Uint8Array(analyser.frequencyBinCount);
-        source.connect(analyser); audioEnabled = true; btn.style.display = 'none';
-      } catch (err) { btn.disabled = false; btn.textContent = 'Ошибка'; }
+        source.connect(analyser);
+        audioEnabled = true;
+        btn.style.display = 'none';
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = 'Ошибка';
+      }
     }
 
     canvas.addEventListener('mousedown', (e) => {
@@ -1097,23 +1179,32 @@
       bursts.push({ x: clickX, y: clickY, r: 10, maxR: 380, alpha: CONFIG.saluteOpacity, hue: getXColor(clickX) });
       nodes.forEach(n => {
         const dx = n.x - clickX, dy = n.y - clickY, dist = Math.hypot(dx, dy);
-        if (dist < 600 && dist > 0) { const force = Math.pow((600 - dist) / 600, 2) * 48; n.vx += (dx / dist) * force; n.vy += (dy / dist) * force; }
+        if (dist < 600 && dist > 0) {
+          const force = Math.pow((600 - dist) / 600, 2) * 48;
+          n.vx += (dx / dist) * force;
+          n.vy += (dy / dist) * force;
+        }
       });
       flash = Math.min(1, flash + 0.38);
     });
 
     canvas.addEventListener('mousemove', (e) => {
-      const rect = canvas.getBoundingClientRect(); mouse.x = e.clientX - rect.left; mouse.y = e.clientY - rect.top; mouse.active = true;
+      const rect = canvas.getBoundingClientRect();
+      mouse.x = e.clientX - rect.left;
+      mouse.y = e.clientY - rect.top;
+      mouse.active = true;
     });
     canvas.addEventListener('mouseleave', () => { mouse.active = false; });
     canvas.addEventListener('wheel', (e) => {
-      if (!audioEnabled) return; e.preventDefault();
+      if (!audioEnabled) return;
+      e.preventDefault();
       breakdownTarget = clamp01(breakdownTarget + (e.deltaY > 0 ? -0.08 : 0.08));
     }, { passive: false });
 
     btn.addEventListener('click', startAudio);
     window.addEventListener('resize', resize);
-    resize(); animate();
+    resize();
+    animate();
   </script>
 </body>
 </html>
