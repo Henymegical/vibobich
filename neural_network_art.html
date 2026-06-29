@@ -146,7 +146,9 @@
       backdrop-filter: blur(8px);
       letter-spacing: 0.02em;
     }
-
+    .hud > :last-child {
+        margin-bottom: 50px;
+    }
     .tune-panel {
       display: grid;
       gap: 9px;
@@ -442,6 +444,7 @@
 
     .screen-control {
       position: relative;
+      z-index: 4;
       width: min(360px, 46vw);
       padding: 12px 14px 11px;
       border-radius: 18px;
@@ -453,6 +456,7 @@
       gap: 8px;
       pointer-events: auto;
       user-select: none;
+      touch-action: none;
     }
 
     .screen-control-head {
@@ -504,12 +508,6 @@
       cursor: pointer;
     }
 
-    .screen-control .screen-control-hint {
-      font-size: 10px;
-      line-height: 1.35;
-      color: rgba(236,244,255,0.62);
-      letter-spacing: 0.01em;
-    }
 
   </style>
 </head>
@@ -538,14 +536,13 @@
           <span class="band-meter"><i id="meterHigh"></i></span>
         </div>
       </div>
-      <div class="hud-note">Wheel · breakdown / drop · on-screen calmness · F2 developer panel</div>
+      <div class="hud-note">Wheel - drop · F2 - developer panel</div>
       <div class="screen-control" id="calmControl">
         <div class="screen-control-head">
-          <span>Motion Calmness</span>
+          <span>Motion Smoothness</span>
           <output id="calmValue">55%</output>
         </div>
         <input id="calmSlider" type="range" min="0" max="100" value="55" />
-        <div class="screen-control-hint">Higher values smooth idle jitter and slow breathing. Lower values make the network twitchier for Nightcore-style tracks.</div>
       </div>
 
     </div>
@@ -568,9 +565,9 @@
       // =======================
       // Links
       // =======================
-      linkNearPriority: 2.1,
+      linkNearPriority: 2.08,
       linkBaseCount: 32,
-      linkAudioBoost: 100,
+      linkAudioBoost: 80,
 
       linkMinAlpha: 0.01,
       linkEnergyAlphaBoost: 0.52,
@@ -614,7 +611,7 @@
       nodeGlowAudioBoost: 3.4,
       nodeGlowBreathRange: 2.45,
 
-      maxNodes: 60,
+      maxNodes: 50,
       bassNodes: 11,
       vocalNodes: 11,
       trebleNodes: 13,
@@ -672,6 +669,7 @@
     const devPanel = document.getElementById('devPanel');
     const devGrid = document.getElementById('devGrid');
     const devReset = document.getElementById('devReset');
+    const calmControl = document.getElementById('calmControl');
     const calmSlider = document.getElementById('calmSlider');
     const calmValue = document.getElementById('calmValue');
 
@@ -860,21 +858,34 @@
       try { localStorage.setItem('eqCalmness', String(v)); } catch (e) {}
     }
 
+    const storedCalmness = (() => {
+      try {
+        const v = Number(localStorage.getItem('eqCalmness'));
+        return Number.isFinite(v) ? clampRange(v, 0, 100) : Math.round((CONFIG.calmness ?? 0.55) * 100);
+      } catch (e) {
+        return Math.round((CONFIG.calmness ?? 0.55) * 100);
+      }
+    })();
+    syncCalmnessUI(storedCalmness);
+
     function getCalmProfile() {
       const calm = clamp01(CONFIG.calmness ?? 0.55);
-      const calmBoost = 1 - Math.pow(1 - calm, 3.25);
+      const calmBoost = 1 - Math.pow(1 - calm, 4.4);
       return {
         calm,
         calmBoost,
-        speedMult: mix(1.52, 0.18, calmBoost),
-        idleWander: mix(1.95, 0.10, calmBoost),
-        idleBreath: mix(1.55, 0.12, calmBoost),
-        noise: mix(1.75, 0.06, calmBoost),
-        swirl: mix(1.38, 0.22, calmBoost),
-        wave: mix(1.42, 0.18, calmBoost),
-        link: mix(1.28, 0.36, calmBoost),
-        spawn: mix(1.16, 0.70, calmBoost),
-        activityBias: mix(0.00, 0.16, calmBoost)
+        // Low calmness still stays watchable and not overly jittery.
+        speedMult: mix(1.55, 0.10, calmBoost),
+        idleWander: mix(1.35, 0.04, calmBoost),
+        idleBreath: mix(1.15, 0.07, calmBoost),
+        noise: mix(1.45, 0.03, calmBoost),
+        swirl: mix(1.28, 0.10, calmBoost),
+        wave: mix(1.22, 0.08, calmBoost),
+        link: mix(1.20, 0.30, calmBoost),
+        spawn: mix(1.12, 0.55, calmBoost),
+        activityBias: mix(0.00, 0.22, calmBoost),
+        saluteChance: mix(0.38, 0.08, calmBoost),
+        extraSaluteChance: mix(0.20, 0.03, calmBoost)
       };
     }
 
@@ -1025,30 +1036,33 @@
     }
 
     function spawnSalute(x, y, source, energy, bass, vocal, treble, hueOverride = null) {
+      const calmProfile = getCalmProfile();
       const kind = source === 'mouse' ? 'mouse' : source === 'beat' ? 'beat' : 'auto';
       const alphaBase = kind === 'mouse'
         ? PANEL_STATE.mouseSaluteAlpha
         : kind === 'beat'
           ? PANEL_STATE.beatSaluteAlpha
           : PANEL_STATE.autoSaluteAlpha;
-      const scaleBase = kind === 'mouse'
-        ? PANEL_STATE.mouseSaluteScale
-        : kind === 'beat'
-          ? 0.92
-          : 0.78;
-      const ringCount = kind === 'mouse'
+      const calmAlphaScale = mix(1.0, 0.42, calmProfile.calmBoost);
+      const calmSizeScale = mix(1.0, 0.72, calmProfile.calmBoost);
+      const ringCount = Math.max(1, Math.round((kind === 'mouse'
         ? PANEL_STATE.mouseSaluteRings
         : kind === 'beat'
           ? 3
-          : 2;
+          : 2) * mix(1.0, 0.62, calmProfile.calmBoost)));
+      const scaleBase = (kind === 'mouse'
+        ? PANEL_STATE.mouseSaluteScale
+        : kind === 'beat'
+          ? 0.92
+          : 0.78) * calmSizeScale;
       const hue = hueOverride ?? getXColor(x);
-      const maxR = (kind === 'mouse' ? 150 : kind === 'beat' ? 185 : 130) * scaleBase + energy * (kind === 'mouse' ? 160 : 210);
+      const maxR = ((kind === 'mouse' ? 150 : kind === 'beat' ? 185 : 130) * scaleBase + energy * (kind === 'mouse' ? 160 : 210)) * calmSizeScale;
       bursts.push({
         x,
         y,
         r: 6 + energy * 8 * scaleBase,
         maxR,
-        alpha: alphaBase * (0.95 + energy * 0.3),
+        alpha: alphaBase * (0.95 + energy * 0.3) * calmAlphaScale,
         hue,
         kind,
         rings: ringCount,
@@ -1057,7 +1071,7 @@
         alphaDecay: kind === 'mouse' ? 0.016 : kind === 'beat' ? 0.018 : 0.015,
         scale: scaleBase
       });
-      trimEffectQueue(bursts, kind === 'mouse' ? 12 : 20);
+      trimEffectQueue(bursts, kind === 'mouse' ? 8 : Math.max(6, Math.round(mix(10, 5, calmProfile.calmBoost))));
     }
 
     function makeCurrentChain(source, energy, bass, vocal, treble, xHint = null, yHint = null) {
@@ -1278,7 +1292,7 @@ function makeWavefront(kind, side, energy, bass, vocal, treble) {
       const calmness = calmProfile.calm;
       const bassRise = Math.max(0, bass - lastBass), trebleRise = Math.max(0, treble - lastTreble);
 
-      globalSpeedMult = mix(globalSpeedMult, (CONFIG.speedBase + energy * CONFIG.speedEnergyMult) * calmProfile.speedMult, 0.055);
+      globalSpeedMult = mix(globalSpeedMult, (CONFIG.speedBase + energy * CONFIG.speedEnergyMult) * calmProfile.speedMult, 0.085);
       globalHueOffset = (globalHueOffset + 0.16 * globalSpeedMult + energy * 0.5 * calmProfile.wave) % 360;
       longTermEnergy = longTermEnergy * 0.992 + energy * 0.008;
 
@@ -1303,7 +1317,9 @@ function makeWavefront(kind, side, energy, bass, vocal, treble) {
           const bassNodes = activeNodes.filter(nd => nd.kind === 'bass');
           if (bassNodes.length && Math.random() > 0.22) n = bassNodes[(Math.random() * bassNodes.length) | 0];
 
-          spawnSalute(n.x, n.y, 'beat', energy + bass * 0.65, bass, vocal, treble, getXColor(n.x));
+          if (Math.random() < calmProfile.saluteChance * mix(1.0, 0.72, calmProfile.calmBoost)) {
+            spawnSalute(n.x, n.y, 'beat', energy + bass * mix(0.65, 0.42, calmProfile.calmBoost), bass, vocal, treble, getXColor(n.x));
+          }
           ripples.push({ x: n.x, y: n.y, r: 0, speed: 10 + bass * 18 * globalSpeedMult, alpha: 0.56, maxR: width * 1.52 });
           trimEffectQueue(ripples, 18);
           const beatHalo = makeCurrentChain('beat', energy + bass * 0.35, bass, vocal, treble);
@@ -1320,10 +1336,10 @@ function makeWavefront(kind, side, energy, bass, vocal, treble) {
             beatBridges.push(makeBeatBridge(leftCluster[(Math.random() * leftCluster.length) | 0], centerCluster[(Math.random() * centerCluster.length) | 0], energy, bass, treble));
           }
 
-          wavefronts.push(makeWavefront('bass', 'left', energy, bass, vocal, treble, Math.random() > 0.55 ? 'ribbon' : 'flash'));
-          if (vocal > 0.12 || energy > 0.2) wavefronts.push(makeWavefront('vocal', Math.random() > 0.5 ? 'left' : 'right', energy, bass, vocal, treble, Math.random() > 0.45 ? 'filament' : 'ribbon'));
-          if (treble > 0.12 || energy > 0.18) wavefronts.push(makeWavefront('treble', 'right', energy, bass, vocal, treble, Math.random() > 0.5 ? 'flash' : 'filament'));
-          if (energy > 0.42) wavefronts.push(makeWavefront('vocal', 'left', energy * 0.85, bass, vocal, treble, 'ribbon'));
+          wavefronts.push(makeWavefront('bass', 'left', energy, bass, vocal, treble, Math.random() > mix(0.55, 0.82, calmProfile.calmBoost) ? 'ribbon' : 'flash'));
+          if (vocal > 0.12 || energy > 0.2) wavefronts.push(makeWavefront('vocal', Math.random() > 0.5 ? 'left' : 'right', energy, bass, vocal, treble, Math.random() > mix(0.45, 0.75, calmProfile.calmBoost) ? 'filament' : 'ribbon'));
+          if (treble > 0.12 || energy > 0.18) wavefronts.push(makeWavefront('treble', 'right', energy, bass, vocal, treble, Math.random() > mix(0.5, 0.82, calmProfile.calmBoost) ? 'flash' : 'filament'));
+          if (energy > 0.42 && Math.random() < mix(0.72, 0.36, calmProfile.calmBoost)) wavefronts.push(makeWavefront('vocal', 'left', energy * 0.85, bass, vocal, treble, 'ribbon'));
           trimEffectQueue(wavefronts, 14);
 
           if (breakdownIntensity > 0.2) {
@@ -1351,10 +1367,10 @@ function makeWavefront(kind, side, energy, bass, vocal, treble) {
           const n = pool[(Math.random() * pool.length) | 0];
           const textPool = ['SYNC', 'FLOW', 'GRID', 'NODE', '0x' + Math.random().toString(16).slice(2, 6).toUpperCase(), 'DATA', 'LINK'];
           floatingTexts.push({ x: n.x + (Math.random() - 0.5) * 100, y: n.y + (Math.random() - 0.5) * 70, text: textPool[(Math.random() * textPool.length) | 0], alpha: 1, life: 22 + Math.random() * 18 });
-          if (Math.random() > 0.5) {
+          if (Math.random() < calmProfile.extraSaluteChance * mix(1.0, 0.66, calmProfile.calmBoost)) {
             spawnSalute(n.x, n.y, 'auto', energy * 0.9, bass, vocal, treble, getXColor(n.x));
           }
-          if (Math.random() > 0.65) {
+          if (Math.random() > mix(0.70, 0.93, calmProfile.calmBoost)) {
             const surge = makeCurrentChain('auto', energy, bass, vocal, treble, n.x, n.y);
             if (surge) currentChains.push(surge);
           }
@@ -1410,15 +1426,15 @@ function makeWavefront(kind, side, energy, bass, vocal, treble) {
         const targetAnchorX = node.baseX + anchorShift;
         const targetAnchorY = node.baseY + Math.sin(time * (0.45 + bandWeight * 0.22) + node.phase) * (3 + bandWeight * 8);
 
-        const flow = (0.018 * globalSpeedMult + energy * 0.02 + bandWeight * 0.006) * mix(1.0, 0.64, calmProfile.calmBoost);
+        const flow = (0.018 * globalSpeedMult + energy * 0.02 + bandWeight * 0.006) * mix(1.0, 0.46, calmProfile.calmBoost);
         node.anchorX += (targetAnchorX - node.anchorX) * flow;
         node.anchorY += (targetAnchorY - node.anchorY) * flow;
 
-        const calmNudge = (0.08 + energy * 0.18 + bandWeight * 0.12) * calmProfile.idleBreath;
+        const calmNudge = (0.08 + energy * 0.18 + bandWeight * 0.12) * calmProfile.idleBreath * mix(1.0, 0.7, calmProfile.calmBoost);
         node.vx += (Math.sin(time * 0.36 + node.phase) * 0.15) * calmNudge * 0.35;
         node.vy += (Math.cos(time * 0.41 + node.phase) * 0.12) * calmNudge * 0.35;
 
-        const idleDrift = (0.006 + silence * 0.018) * CONFIG.idleNodeWander * calmProfile.idleWander;
+        const idleDrift = (0.006 + silence * 0.018) * CONFIG.idleNodeWander * calmProfile.idleWander * mix(1.0, 0.55, calmProfile.calmBoost);
         node.vx += Math.sin(idlePhaseA + node.phase + node.seed * 7) * idleDrift;
         node.vy += Math.cos(idlePhaseB + node.phase + node.seed * 5) * idleDrift * 0.75;
 
@@ -1446,7 +1462,7 @@ function makeWavefront(kind, side, energy, bass, vocal, treble) {
           }
         }
 
-        const softOrb = Math.sin(time * (0.42 * globalSpeedMult + node.drift * 2.4) + node.phase) * (18 + energy * 24 + breakdownIntensity * 16) * calmProfile.swirl + Math.cos(time * 0.19 + node.seed * 11) * 6 * profile.spread * calmProfile.swirl;
+        const softOrb = (Math.sin(time * (0.42 * globalSpeedMult + node.drift * 2.4) + node.phase) * (18 + energy * 24 + breakdownIntensity * 16) + Math.cos(time * 0.19 + node.seed * 11) * 6 * profile.spread) * calmProfile.swirl;
         const softLift = Math.cos(time * (0.67 + bandWeight * 0.05) + node.phase) * (14 + energy * 18) * calmProfile.swirl;
 
         node.x = node.ox + softOrb;
@@ -1717,23 +1733,33 @@ function makeWavefront(kind, side, energy, bass, vocal, treble) {
     }
 
     function drawNotebookGrid(motion) {
+      const calmProfile = getCalmProfile();
+      const calmBoost = calmProfile.calmBoost;
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
       ctx.beginPath();
-      const cellSize = CONFIG.gridCellSize, cols = Math.ceil(width / cellSize) + 4, rows = Math.ceil(height / cellSize) + 4;
-      const wavePower = motion.bass * CONFIG.gridWaveIntensity + breakdownIntensity * CONFIG.gridWaveIntensity * 2.3;
-      ctx.lineWidth = 1 + breakdownIntensity * 1.2;
-      ctx.strokeStyle = `hsla(${(globalHueOffset * (1 - breakdownIntensity) + motion.treble * 30) % 360}, 82%, ${60 + breakdownIntensity * 28}%, ${CONFIG.gridOpacity + motion.energy * 0.16 + breakdownIntensity * 0.22})`;
+      const cellSize = CONFIG.gridCellSize;
+      const cols = Math.ceil(width / cellSize) + 4;
+      const rows = Math.ceil(height / cellSize) + 4;
+      const tempo = mix(2.0, 0.42, calmBoost);
+      const warpScale = mix(1.0, 0.18, calmBoost);
+      const wavePower = (motion.bass * CONFIG.gridWaveIntensity + breakdownIntensity * CONFIG.gridWaveIntensity * 2.3) * warpScale;
+      ctx.lineWidth = mix(1.1, 0.5, calmBoost) + breakdownIntensity * 0.55 * (1 - calmBoost);
+      ctx.strokeStyle = `hsla(${(globalHueOffset * (1 - breakdownIntensity) + motion.treble * 30) % 360}, 82%, ${60 + breakdownIntensity * 28}%, ${(CONFIG.gridOpacity + motion.energy * 0.16 + breakdownIntensity * 0.22) * mix(1.0, 0.68, calmBoost)})`;
 
       for (let i = -2; i <= cols; i++) {
         for (let j = -2; j <= rows; j++) {
-          const ox = i * cellSize, oy = j * cellSize, waveX = Math.sin(oy * 0.01 + time * 2) * wavePower, waveY = Math.cos(ox * 0.01 + time * 2) * wavePower;
+          const ox = i * cellSize, oy = j * cellSize;
+          const waveX = Math.sin(oy * 0.007 + time * tempo) * wavePower;
+          const waveY = Math.cos(ox * 0.007 + time * (tempo * 0.92)) * wavePower;
           if (j === -2) ctx.moveTo(ox + waveX, oy + waveY); else ctx.lineTo(ox + waveX, oy + waveY);
         }
       }
       for (let j = -2; j <= rows; j++) {
         for (let i = -2; i <= cols; i++) {
-          const ox = i * cellSize, oy = j * cellSize, waveX = Math.sin(oy * 0.01 + time * 2) * wavePower, waveY = Math.cos(ox * 0.01 + time * 2) * wavePower;
+          const ox = i * cellSize, oy = j * cellSize;
+          const waveX = Math.sin(oy * 0.007 + time * tempo) * wavePower;
+          const waveY = Math.cos(ox * 0.007 + time * (tempo * 0.92)) * wavePower;
           if (i === -2) ctx.moveTo(ox + waveX, oy + waveY); else ctx.lineTo(ox + waveX, oy + waveY);
         }
       }
@@ -2229,6 +2255,11 @@ function makeWavefront(kind, side, energy, bass, vocal, treble) {
     if (calmSlider) {
       calmSlider.addEventListener('input', (e) => syncCalmnessUI(e.target.value));
       calmSlider.addEventListener('change', (e) => syncCalmnessUI(e.target.value));
+    }
+    if (calmControl) {
+      calmControl.addEventListener('pointerdown', (e) => e.stopPropagation());
+      calmControl.addEventListener('mousedown', (e) => e.stopPropagation());
+      calmControl.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
     }
     buildDevPanel();
     syncDevPanelVisibility();
