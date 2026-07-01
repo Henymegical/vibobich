@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Аудио-реактивная нейросеть 2.7 (Neural Wave Edition)</title>
   <style>
+    /* стили без изменений */
     :root { color-scheme: dark; }
     * { box-sizing: border-box; }
     html, body {
@@ -507,8 +508,6 @@
       box-shadow: 0 0 0 4px rgba(120,185,255,0.15);
       cursor: pointer;
     }
-
-
   </style>
 </head>
 <body>
@@ -544,7 +543,6 @@
         </div>
         <input id="calmSlider" type="range" min="0" max="100" value="55" />
       </div>
-
     </div>
   </div>
 
@@ -561,97 +559,64 @@
 
   <script>
     const CONFIG = {
-
-      // =======================
-      // Links
-      // =======================
       linkNearPriority: 2.08,
       linkBaseCount: 32,
-      linkAudioBoost: 80,
-
+      linkAudioBoost: 65,
       linkMinAlpha: 0.01,
       linkEnergyAlphaBoost: 0.52,
-
       linkBaseWidth: 0.32,
       linkEnergyWidthBoost: 1.0,
       linkBendFactor: 0.24,
-
       linkSurvivalThreshold: 0.009,
       linkScoreEnergyWeight: 0.72,
-      linkScoreProximity: 0.18,
       linkSameClusterBonus: 0.12,
       linkDiffClusterBonus: 0.11,
       linkAudioComboBonus: 0.26,
 
-
-      // =======================
-      // Motion
-      // =======================
       speedBase: 0.34,
       speedEnergyMult: 3.0,
       chainSpread: 0.66,
       calmness: 0.55,
-
       idleNodeWander: 3.1,
-      idleNodeBreath: 5.4,
       idleLinkBreath: 0.24,
-
       beatKickThreshold: 0.28,
       beatKickRise: 0.05,
       trebleSnareThreshold: 0.22,
 
-
-      // =======================
-      // Nodes
-      // =======================
       nodeBaseRadius: 4.2,
       nodeEnergyRadiusBoost: 2.4,
-
       nodeGlowBaseMult: 0.6,
       nodeGlowAudioBoost: 3.4,
       nodeGlowBreathRange: 2.45,
-
       maxNodes: 50,
       bassNodes: 11,
       vocalNodes: 11,
       trebleNodes: 13,
 
-
-      // =======================
-      // Grid / Background
-      // =======================
       gridCellSize: 100,
       gridWaveIntensity: 20,
       gridOpacity: 0.085,
 
-      wavefrontSpeed: 16,
-      wavefrontAlpha: 0.34,
+      wavefrontSpeed: 12.0,
+      wavefrontAlpha: 0.2,
       wavefrontWidth: 170,
-      wavefrontGlow: 0.48,
+      wavefrontGlow: 0.35,
 
+      rippleSpeed: 11.0,
+      rippleEnergyBoost: 16.0,
+      rippleAlpha: 0.66,
+      rippleDecay: 0.013,
+      rippleMaxR: 1.52,
+      rippleMouseScale: 1.0,
+      rippleMouseAlpha: 1.0,
 
-      // =======================
-      // Salutes
-      // =======================
-      saluteOpacity: 0.3,
+      saluteFrequency: 0.4,  
+      waveFrequency: 0.1,
 
-      mouseSaluteAlpha: 0.10,
-      mouseSaluteScale: 0.78,
-      mouseSaluteRings: 2,
-
-      beatSaluteAlpha: 0.12,
-      autoSaluteAlpha: 0.08,
-
-
-      // =======================
-      // Atmosphere
-      // =======================
-      smallParticleCount: 180,
+      smallParticleCount: 100,
       smallParticleSpeed: 0.06,
       smallParticleAudioReactive: 0.02,
-
       largePulseSpeed: 0.0032,
-
       redDropMix: 0.92
     };
 
@@ -679,16 +644,15 @@
     let nodes = [], links = [], pulses = [], particles = [], bursts = [], ripples = [], beatBridges = [], floatingTexts = [], wavefronts = [], currentChains = [];
     let nodeCounter = 0;
     let linkMemory = new Map();
+    let frameCount = 0;
 
     let time = 0;
     let globalHueOffset = 0;
     let breakdownTarget = 0;
     let breakdownIntensity = 0;
     let globalSpeedMult = 1;
-
-    let kickTimer = 0, snareTimer = 0, beatTimer = 0;
-    let flash = 0, cssFilterPulse = 0, glitchPulse = 0;
-
+    let kickTimer = 0, snareTimer = 0;
+    let flash = 0, cssFilterPulse = 0;
     let lastBass = 0, lastTreble = 0;
     let longTermEnergy = 0.1;
     let mouse = { x: -1000, y: -1000, active: false };
@@ -717,6 +681,10 @@
       const ib = parseInt(b.id.split('-')[1], 10);
       return ia < ib ? `${ia}:${ib}` : `${ib}:${ia}`;
     };
+
+    function clampRange(v, min, max) {
+      return Math.max(min, Math.min(max, v));
+    }
 
     function getXColor(x) {
       const ratio = width > 0 ? Math.max(0, Math.min(1, x / width)) : 0.5;
@@ -831,10 +799,6 @@
 
     const STRUCTURAL_FIELDS = new Set(['maxNodes', 'bassNodes', 'vocalNodes', 'trebleNodes']);
 
-    function getPanelValue(target, key) {
-      return target[key];
-    }
-
     function syncPanelSectionValues(row, value, step) {
       const output = row.querySelector('output');
       const range = row.querySelector('.dev-range');
@@ -844,11 +808,6 @@
       if (range) range.value = String(value);
       if (number) number.value = String(value);
     }
-
-    function clampRange(v, min, max) {
-      return Math.max(min, Math.min(max, v));
-    }
-
 
     function syncCalmnessUI(value) {
       const v = clampRange(Number(value) || 0, 0, 100);
@@ -874,31 +833,43 @@
       return {
         calm,
         calmBoost,
-        // Low calmness still stays watchable and not overly jittery.
         speedMult: mix(1.55, 0.10, calmBoost),
         idleWander: mix(1.35, 0.04, calmBoost),
         idleBreath: mix(1.15, 0.07, calmBoost),
         noise: mix(1.45, 0.03, calmBoost),
         swirl: mix(1.28, 0.10, calmBoost),
         wave: mix(1.22, 0.08, calmBoost),
+
+        waveVisibility: mix(1.0, 0.2, calmBoost),
+        waveSpeedMult: mix(1.0, 0.4, calmBoost),
+        waveSpawnChance: mix(1.0, 0.25, calmBoost) * CONFIG.waveFrequency,
+
+        rippleSpeedMult: mix(1.0, 0.84, calmBoost),
+        rippleAlphaMult: mix(1.0, 0.82, calmBoost),
+        rippleDecayMult: mix(1.0, 0.72, calmBoost),
+        rippleScaleMult: mix(1.0, 0.92, calmBoost),
+
         link: mix(1.20, 0.30, calmBoost),
         spawn: mix(1.12, 0.55, calmBoost),
         activityBias: mix(0.00, 0.22, calmBoost),
-        saluteChance: mix(0.38, 0.08, calmBoost),
-        extraSaluteChance: mix(0.20, 0.03, calmBoost)
+        rippleChance: mix(0.38, 0.08, calmBoost) * CONFIG.saluteFrequency,
+        rippleExtraChance: mix(0.20, 0.03, calmBoost) * CONFIG.saluteFrequency,
+        floatingTextRise: mix(1.0, 1.08, calmBoost),
+        floatingTextAlphaDecay: mix(1.0, 4.5, calmBoost),
+        floatingTextLifeDecay: mix(1.0, 3.8, calmBoost),
+        floatingTextSpawnLife: mix(1.0, 0.52, calmBoost)
       };
     }
 
     function buildDevPanel() {
       if (!devGrid) return;
-      const rows = [];
 
       const sections = [
         { title: 'Links', keys: ['linkNearPriority', 'linkBaseCount', 'linkAudioBoost', 'linkMinAlpha', 'linkEnergyAlphaBoost', 'linkBaseWidth', 'linkEnergyWidthBoost', 'linkBendFactor'] },
-        { title: 'Motion', keys: ['speedBase', 'speedEnergyMult', 'chainSpread', 'idleNodeBreath'] },
+        { title: 'Motion', keys: ['speedBase', 'speedEnergyMult', 'chainSpread', 'idleLinkBreath'] },
         { title: 'Nodes', keys: ['nodeBaseRadius', 'nodeEnergyRadiusBoost', 'nodeGlowBaseMult', 'nodeGlowAudioBoost', 'nodeGlowBreathRange', 'maxNodes', 'bassNodes', 'vocalNodes', 'trebleNodes'] },
-        { title: 'Grid / background', keys: ['gridCellSize', 'gridWaveIntensity', 'gridOpacity', 'wavefrontSpeed', 'wavefrontAlpha', 'wavefrontGlow'] },
-        { title: 'Salutes', keys: ['saluteOpacity', 'mouseSaluteAlpha', 'mouseSaluteScale', 'mouseSaluteRings', 'beatSaluteAlpha', 'autoSaluteAlpha'] }
+        { title: 'Grid / background', keys: ['gridCellSize', 'gridWaveIntensity', 'gridOpacity', 'wavefrontSpeed', 'wavefrontAlpha', 'wavefrontGlow', 'waveFrequency'] },
+        { title: 'Ripples / waves', keys: ['saluteFrequency', 'rippleSpeed', 'rippleEnergyBoost', 'rippleAlpha', 'rippleDecay', 'rippleMaxR', 'rippleMouseScale', 'rippleMouseAlpha'] }
       ];
 
       const fieldByKey = new Map();
@@ -973,23 +944,10 @@
     }
 
     const PANEL_DEFAULTS = {
-      mouseSaluteAlpha: CONFIG.mouseSaluteAlpha,
-      mouseSaluteScale: CONFIG.mouseSaluteScale,
-      mouseSaluteRings: CONFIG.mouseSaluteRings,
-      beatSaluteAlpha: CONFIG.beatSaluteAlpha,
-      autoSaluteAlpha: CONFIG.autoSaluteAlpha,
-      chainSpread: CONFIG.chainSpread,
       panelOpen: false
     };
 
     const PANEL_STATE = { ...PANEL_DEFAULTS };
-    const DEV_STATE = PANEL_STATE; // backwards-compatible alias
-    const DEV_DEFAULTS = PANEL_DEFAULTS;
-
-    let savedCalmness = null;
-    try { savedCalmness = localStorage.getItem('eqCalmness'); } catch (e) {}
-    syncCalmnessUI(savedCalmness == null ? Math.round(CONFIG.calmness * 100) : Number(savedCalmness));
-
 
     const DEV_FIELDS = [
       { key: 'nodeBaseRadius', label: 'Node base radius', hint: 'Базовый размер узла без музыки.', min: 2, max: 8, step: 0.1, target: CONFIG },
@@ -1007,71 +965,49 @@
       { key: 'gridCellSize', label: 'Grid cell size', hint: 'Размер клеток сетки.', min: 60, max: 160, step: 1, target: CONFIG },
       { key: 'gridWaveIntensity', label: 'Grid wave intensity', hint: 'Сила волны у сетки.', min: 0, max: 36, step: 0.5, target: CONFIG },
       { key: 'gridOpacity', label: 'Grid opacity', hint: 'Прозрачность сетки.', min: 0, max: 0.25, step: 0.001, target: CONFIG },
-      { key: 'saluteOpacity', label: 'Salute opacity', hint: 'Яркость авто- и бит-салютов.', min: 0.02, max: 0.5, step: 0.01, target: CONFIG },
       { key: 'wavefrontSpeed', label: 'Wavefront speed', hint: 'Скорость боковых волн.', min: 2, max: 42, step: 0.1, target: CONFIG },
       { key: 'wavefrontAlpha', label: 'Wavefront alpha', hint: 'Прозрачность волны.', min: 0.02, max: 0.8, step: 0.01, target: CONFIG },
       { key: 'wavefrontGlow', label: 'Wavefront glow', hint: 'Свечение волны.', min: 0, max: 1.2, step: 0.01, target: CONFIG },
+      { key: 'waveFrequency', label: 'Wave frequency', hint: 'Множитель вероятности появления волновых фронтов.', min: 0.1, max: 2.0, step: 0.05, target: CONFIG },
+      { key: 'rippleSpeed', label: 'Ripple speed', hint: 'Скорость волны от мыши и удара.', min: 4, max: 28, step: 0.1, target: CONFIG },
+      { key: 'rippleEnergyBoost', label: 'Ripple energy boost', hint: 'Дополнительная скорость волны от энергии.', min: 0, max: 40, step: 0.5, target: CONFIG },
+      { key: 'rippleAlpha', label: 'Ripple alpha', hint: 'Базовая яркость волны.', min: 0.05, max: 1.5, step: 0.01, target: CONFIG },
+      { key: 'rippleDecay', label: 'Ripple decay', hint: 'Скорость исчезновения волны.', min: 0.002, max: 0.05, step: 0.001, target: CONFIG },
+      { key: 'rippleMaxR', label: 'Ripple max scale', hint: 'Максимальный радиус волны относительно ширины сцены.', min: 0.5, max: 3, step: 0.01, target: CONFIG },
+      { key: 'rippleMouseScale', label: 'Mouse ripple scale', hint: 'Множитель размера волны от мыши.', min: 0.6, max: 1.8, step: 0.01, target: CONFIG },
+      { key: 'rippleMouseAlpha', label: 'Mouse ripple alpha', hint: 'Множитель яркости волны от мыши.', min: 0.2, max: 2, step: 0.01, target: CONFIG },
       { key: 'speedBase', label: 'Motion base', hint: 'Базовая скорость движения сцены.', min: 0.05, max: 0.8, step: 0.01, target: CONFIG },
       { key: 'speedEnergyMult', label: 'Motion energy mult', hint: 'Ускорение при росте энергии.', min: 0.2, max: 5, step: 0.01, target: CONFIG },
       { key: 'chainSpread', label: 'Chain spread', hint: 'Разлёт текущих цепочек и их визуальная ширина.', min: 0.2, max: 1, step: 0.01, target: CONFIG },
-      { key: 'idleNodeBreath', label: 'Idle breath', hint: 'Сила спокойного дыхания.', min: 0, max: 10, step: 0.05, target: CONFIG },
       { key: 'idleLinkBreath', label: 'Idle link breath', hint: 'Пульс связей без музыки.', min: 0, max: 1, step: 0.01, target: CONFIG },
       { key: 'maxNodes', label: 'Max nodes', hint: 'Сколько узлов может жить одновременно.', min: 24, max: 160, step: 1, target: CONFIG },
       { key: 'bassNodes', label: 'Bass nodes', hint: 'Сколько узлов относится к басу.', min: 4, max: 28, step: 1, target: CONFIG },
       { key: 'vocalNodes', label: 'Mid nodes', hint: 'Сколько узлов живёт в середине.', min: 4, max: 28, step: 1, target: CONFIG },
       { key: 'trebleNodes', label: 'High nodes', hint: 'Сколько узлов живёт в верхах.', min: 4, max: 28, step: 1, target: CONFIG },
-      { key: 'mouseSaluteAlpha', label: 'Mouse salute alpha', hint: 'Яркость всплеска от мыши.', min: 0.04, max: 0.45, step: 0.01, target: PANEL_STATE },
-      { key: 'mouseSaluteScale', label: 'Mouse salute scale', hint: 'Размер всплеска от мыши.', min: 0.5, max: 1.2, step: 0.01, target: PANEL_STATE },
-      { key: 'mouseSaluteRings', label: 'Mouse rings', hint: 'Сколько колец у мышиного салюта.', min: 1, max: 4, step: 1, target: PANEL_STATE },
-      { key: 'beatSaluteAlpha', label: 'Beat salute alpha', hint: 'Яркость салюта на ударе.', min: 0.06, max: 0.4, step: 0.01, target: PANEL_STATE },
-      { key: 'autoSaluteAlpha', label: 'Auto salute alpha', hint: 'Яркость автоматического салюта.', min: 0.04, max: 0.3, step: 0.01, target: PANEL_STATE }
-    ]
-
-    function clampRange(v, min, max) {
-      return Math.max(min, Math.min(max, v));
-    }
+      { key: 'saluteFrequency', label: 'Ripple trigger frequency', hint: 'Множитель частоты появления волн от мыши и событий.', min: 0, max: 2.0, step: 0.05, target: CONFIG }
+    ];
 
     function trimEffectQueue(queue, limit) {
       if (queue.length > limit) queue.splice(0, queue.length - limit);
     }
 
-    function spawnSalute(x, y, source, energy, bass, vocal, treble, hueOverride = null) {
+    function spawnRipple(x, y, kind, energy, bass, vocal, treble) {
       const calmProfile = getCalmProfile();
-      const kind = source === 'mouse' ? 'mouse' : source === 'beat' ? 'beat' : 'auto';
-      const alphaBase = kind === 'mouse'
-        ? PANEL_STATE.mouseSaluteAlpha
-        : kind === 'beat'
-          ? PANEL_STATE.beatSaluteAlpha
-          : PANEL_STATE.autoSaluteAlpha;
-      const calmAlphaScale = mix(1.0, 0.42, calmProfile.calmBoost);
-      const calmSizeScale = mix(1.0, 0.72, calmProfile.calmBoost);
-      const ringCount = Math.max(1, Math.round((kind === 'mouse'
-        ? PANEL_STATE.mouseSaluteRings
-        : kind === 'beat'
-          ? 3
-          : 2) * mix(1.0, 0.62, calmProfile.calmBoost)));
-      const scaleBase = (kind === 'mouse'
-        ? PANEL_STATE.mouseSaluteScale
-        : kind === 'beat'
-          ? 0.92
-          : 0.78) * calmSizeScale;
-      const hue = hueOverride ?? getXColor(x);
-      const maxR = ((kind === 'mouse' ? 150 : kind === 'beat' ? 185 : 130) * scaleBase + energy * (kind === 'mouse' ? 160 : 210)) * calmSizeScale;
-      bursts.push({
+      const isMouse = kind === 'mouse';
+      const speed = (CONFIG.rippleSpeed + energy * CONFIG.rippleEnergyBoost + bass * 4 + treble * 2) * calmProfile.rippleSpeedMult * (isMouse ? 1.02 : 1.0);
+      const alpha = CONFIG.rippleAlpha * (isMouse ? CONFIG.rippleMouseAlpha : 1.0) * (0.92 + energy * 0.28) * calmProfile.rippleAlphaMult;
+      const maxR = width * CONFIG.rippleMaxR * (isMouse ? CONFIG.rippleMouseScale : 1.0) * calmProfile.rippleScaleMult;
+      ripples.push({
         x,
         y,
-        r: 6 + energy * 8 * scaleBase,
+        r: 0,
+        speed,
+        alpha,
         maxR,
-        alpha: alphaBase * (0.95 + energy * 0.3) * calmAlphaScale,
-        hue,
         kind,
-        rings: ringCount,
-        seed: Math.random() * 1000,
-        spin: Math.random() * Math.PI * 2,
-        alphaDecay: kind === 'mouse' ? 0.016 : kind === 'beat' ? 0.018 : 0.015,
-        scale: scaleBase
+        decay: CONFIG.rippleDecay * (isMouse ? 0.88 : 1.0) * calmProfile.rippleDecayMult
       });
-      trimEffectQueue(bursts, kind === 'mouse' ? 8 : Math.max(6, Math.round(mix(10, 5, calmProfile.calmBoost))));
+      trimEffectQueue(ripples, 18);
     }
 
     function makeCurrentChain(source, energy, bass, vocal, treble, xHint = null, yHint = null) {
@@ -1123,31 +1059,39 @@
       };
     }
 
-    function makeWavefront(kind, side, energy, bass, vocal, treble, variant = null) {
+    function makeWavefront(kind, side, energy, bass, vocal, treble, variant = null, calmProfile = null) {
+      if (!calmProfile) calmProfile = getCalmProfile();
       const profile = getBandProfile(kind);
       const isBass = kind === 'bass';
       const isTreble = kind === 'treble';
       const isMid = kind === 'vocal';
       const mode = variant ?? (Math.random() > 0.55 ? 'ribbon' : Math.random() > 0.45 ? 'filament' : 'flash');
       const y = isBass
-        ? height * (0.10 + bass * 0.28 + Math.random() * 0.16)
+        ? height * (0.12 + bass * 0.26 + Math.random() * 0.16)
         : isTreble
-          ? height * (0.54 + treble * 0.24 + Math.random() * 0.16)
-          : height * (0.24 + vocal * 0.36 + Math.random() * 0.16);
+          ? height * (0.56 + treble * 0.22 + Math.random() * 0.16)
+          : height * (0.28 + vocal * 0.34 + Math.random() * 0.16);
       const dir = side === 'left' ? 1 : -1;
       const hue = side === 'left' ? getXColor(width * 0.08) : getXColor(width * 0.92);
       const thickness = mode === 'flash' ? 0.72 : mode === 'filament' ? 0.86 : 1.0;
       const speedScale = mode === 'flash' ? 1.28 : mode === 'filament' ? 0.92 : 1.0;
+
+      const visFactor = calmProfile.waveVisibility;
+      const speedFactor = calmProfile.waveSpeedMult;
+
+      const widthVariation = 1 + 0.2 * Math.sin(time * 2.5 + energy * 3);
+      const strandVariation = Math.floor(energy * 4);
+
       return {
         kind,
         mode,
         x: side === 'left' ? -CONFIG.wavefrontWidth : width + CONFIG.wavefrontWidth,
         y,
         dir,
-        speed: (CONFIG.wavefrontSpeed + energy * 28 + (isBass ? bass * 20 : isTreble ? treble * 20 : vocal * 15)) * speedScale * (0.88 + Math.random() * 0.42),
-        width: (CONFIG.wavefrontWidth + energy * 180 + (isBass || isTreble ? 90 : 50)) * (mode === 'flash' ? 0.72 : mode === 'filament' ? 0.84 : 1),
-        alpha: CONFIG.wavefrontAlpha + energy * 0.22 + (mode === 'flash' ? 0.08 : 0),
-        glow: CONFIG.wavefrontGlow + energy * 0.25 + (mode === 'filament' ? 0.12 : 0),
+        speed: (CONFIG.wavefrontSpeed + energy * 28 + (isBass ? bass * 20 : isTreble ? treble * 20 : vocal * 15)) * speedScale * (0.88 + Math.random() * 0.42) * speedFactor,
+        width: (CONFIG.wavefrontWidth + energy * 240 + (isBass || isTreble ? 90 : 50)) * (mode === 'flash' ? 0.72 : mode === 'filament' ? 0.84 : 1) * visFactor * widthVariation,
+        alpha: (CONFIG.wavefrontAlpha + energy * 0.22 + (mode === 'flash' ? 0.08 : 0)) * visFactor,
+        glow: (CONFIG.wavefrontGlow + energy * 0.25 + (mode === 'filament' ? 0.12 : 0)) * visFactor,
         hue,
         phase: Math.random() * Math.PI * 2,
         life: 1.0 + energy * 1.5,
@@ -1155,7 +1099,8 @@
         thickness,
         spark: mode === 'flash' ? 0.45 : 0.22 + Math.random() * 0.35,
         wobble: 0.5 + Math.random() * 1.2,
-        trail: 0.4 + Math.random() * 0.5
+        trail: 0.4 + Math.random() * 0.5,
+        extraStrands: strandVariation
       };
     }
 
@@ -1259,40 +1204,13 @@
       };
     }
 
-function makeWavefront(kind, side, energy, bass, vocal, treble) {
-      const isBass = kind === 'bass';
-      const isTreble = kind === 'treble';
-      const isMid = kind === 'vocal';
-      const y = isBass
-        ? height * (0.12 + bass * 0.26 + Math.random() * 0.16)
-        : isTreble
-          ? height * (0.56 + treble * 0.22 + Math.random() * 0.16)
-          : height * (0.28 + vocal * 0.34 + Math.random() * 0.16);
-      const dir = side === 'left' ? 1 : -1;
-      const hue = side === 'left' ? getXColor(width * 0.08) : getXColor(width * 0.92);
-      return {
-        kind,
-        x: side === 'left' ? -CONFIG.wavefrontWidth : width + CONFIG.wavefrontWidth,
-        y,
-        dir,
-        speed: CONFIG.wavefrontSpeed + energy * 28 + (isBass ? bass * 20 : isTreble ? treble * 20 : vocal * 15),
-        width: CONFIG.wavefrontWidth + energy * 240 + (isBass || isTreble ? 90 : 50),
-        alpha: CONFIG.wavefrontAlpha + energy * 0.22,
-        glow: CONFIG.wavefrontGlow + energy * 0.25,
-        hue,
-        phase: Math.random() * Math.PI * 2,
-        life: 1.0 + energy * 1.5,
-        amp: 10 + energy * 22 + (isBass ? bass * 42 : isTreble ? treble * 42 : vocal * 28)
-      };
-    }
-
     function updateScene(audio) {
       const { bass, vocal, treble, energy } = audio;
       const calmProfile = getCalmProfile();
       const calmness = calmProfile.calm;
       const bassRise = Math.max(0, bass - lastBass), trebleRise = Math.max(0, treble - lastTreble);
 
-      globalSpeedMult = mix(globalSpeedMult, (CONFIG.speedBase + energy * CONFIG.speedEnergyMult) * calmProfile.speedMult, 0.085);
+      globalSpeedMult = mix(globalSpeedMult, (CONFIG.speedBase + energy * CONFIG.speedEnergyMult) * calmProfile.speedMult, 0.12);
       globalHueOffset = (globalHueOffset + 0.16 * globalSpeedMult + energy * 0.5 * calmProfile.wave) % 360;
       longTermEnergy = longTermEnergy * 0.992 + energy * 0.008;
 
@@ -1306,22 +1224,19 @@ function makeWavefront(kind, side, energy, bass, vocal, treble) {
 
       if (kickTimer > 0) kickTimer--;
       if (snareTimer > 0) snareTimer--;
-      if (beatTimer > 0) beatTimer--;
 
       const beatHit = bassRise > CONFIG.beatKickRise && bass > CONFIG.beatKickThreshold && kickTimer === 0;
       if (beatHit) {
-        kickTimer = 10; beatTimer = 8;
+        kickTimer = 10;
         const activeNodes = nodes.filter(n => n.scale > 0.4 && n.activity > 0.18);
         if (activeNodes.length > 0) {
           let n = activeNodes[(Math.random() * activeNodes.length) | 0];
           const bassNodes = activeNodes.filter(nd => nd.kind === 'bass');
           if (bassNodes.length && Math.random() > 0.22) n = bassNodes[(Math.random() * bassNodes.length) | 0];
 
-          if (Math.random() < calmProfile.saluteChance * mix(1.0, 0.72, calmProfile.calmBoost)) {
-            spawnSalute(n.x, n.y, 'beat', energy + bass * mix(0.65, 0.42, calmProfile.calmBoost), bass, vocal, treble, getXColor(n.x));
+          if (Math.random() < calmProfile.rippleChance * mix(1.0, 0.72, calmProfile.calmBoost)) {
+            spawnRipple(n.x, n.y, 'beat', energy + bass * mix(0.65, 0.42, calmProfile.calmBoost), bass, vocal, treble);
           }
-          ripples.push({ x: n.x, y: n.y, r: 0, speed: 10 + bass * 18 * globalSpeedMult, alpha: 0.56, maxR: width * 1.52 });
-          trimEffectQueue(ripples, 18);
           const beatHalo = makeCurrentChain('beat', energy + bass * 0.35, bass, vocal, treble);
           if (beatHalo) { currentChains.push(beatHalo); trimEffectQueue(currentChains, 10); }
 
@@ -1336,14 +1251,15 @@ function makeWavefront(kind, side, energy, bass, vocal, treble) {
             beatBridges.push(makeBeatBridge(leftCluster[(Math.random() * leftCluster.length) | 0], centerCluster[(Math.random() * centerCluster.length) | 0], energy, bass, treble));
           }
 
-          wavefronts.push(makeWavefront('bass', 'left', energy, bass, vocal, treble, Math.random() > mix(0.55, 0.82, calmProfile.calmBoost) ? 'ribbon' : 'flash'));
-          if (vocal > 0.12 || energy > 0.2) wavefronts.push(makeWavefront('vocal', Math.random() > 0.5 ? 'left' : 'right', energy, bass, vocal, treble, Math.random() > mix(0.45, 0.75, calmProfile.calmBoost) ? 'filament' : 'ribbon'));
-          if (treble > 0.12 || energy > 0.18) wavefronts.push(makeWavefront('treble', 'right', energy, bass, vocal, treble, Math.random() > mix(0.5, 0.82, calmProfile.calmBoost) ? 'flash' : 'filament'));
-          if (energy > 0.42 && Math.random() < mix(0.72, 0.36, calmProfile.calmBoost)) wavefronts.push(makeWavefront('vocal', 'left', energy * 0.85, bass, vocal, treble, 'ribbon'));
+          const wsc = calmProfile.waveSpawnChance;
+          if (Math.random() < wsc) wavefronts.push(makeWavefront('bass', 'left', energy, bass, vocal, treble, Math.random() > mix(0.55, 0.82, calmProfile.calmBoost) ? 'ribbon' : 'flash', calmProfile));
+          if (Math.random() < wsc && (vocal > 0.12 || energy > 0.2)) wavefronts.push(makeWavefront('vocal', Math.random() > 0.5 ? 'left' : 'right', energy, bass, vocal, treble, Math.random() > mix(0.45, 0.75, calmProfile.calmBoost) ? 'filament' : 'ribbon', calmProfile));
+          if (Math.random() < wsc && (treble > 0.12 || energy > 0.18)) wavefronts.push(makeWavefront('treble', 'right', energy, bass, vocal, treble, Math.random() > mix(0.5, 0.82, calmProfile.calmBoost) ? 'flash' : 'filament', calmProfile));
+          if (Math.random() < wsc && energy > 0.42 && Math.random() < mix(0.72, 0.36, calmProfile.calmBoost)) wavefronts.push(makeWavefront('vocal', 'left', energy * 0.85, bass, vocal, treble, 'ribbon', calmProfile));
           trimEffectQueue(wavefronts, 14);
 
           if (breakdownIntensity > 0.2) {
-            flash = Math.min(1, flash + 0.28); cssFilterPulse = Math.max(cssFilterPulse, 0.55); glitchPulse = Math.max(glitchPulse, 0.6);
+            flash = Math.min(1, flash + 0.28); cssFilterPulse = Math.max(cssFilterPulse, 0.55);
           }
         }
       }
@@ -1353,8 +1269,10 @@ function makeWavefront(kind, side, energy, bass, vocal, treble) {
         const trebleNodes = nodes.filter(n => n.kind === 'treble' && n.scale > 0.45);
         if (trebleNodes.length > 0) {
           const n = trebleNodes[(Math.random() * trebleNodes.length) | 0];
-          spawnSalute(n.x, n.y, 'auto', energy + treble * 0.35, bass, vocal, treble, getXColor(n.x));
-          wavefronts.push(makeWavefront('treble', 'right', energy + treble * 0.18, bass, vocal, treble, Math.random() > 0.45 ? 'filament' : 'flash'));
+          if (Math.random() < calmProfile.rippleChance) {
+            spawnRipple(n.x, n.y, 'auto', energy + treble * 0.35, bass, vocal, treble);
+          }
+          if (Math.random() < calmProfile.waveSpawnChance) wavefronts.push(makeWavefront('treble', 'right', energy + treble * 0.18, bass, vocal, treble, Math.random() > 0.45 ? 'filament' : 'flash', calmProfile));
           trimEffectQueue(wavefronts, 14);
           const trebleChain = makeCurrentChain('auto', energy + treble * 0.24, bass, vocal, treble, n.x, n.y);
           if (trebleChain) { currentChains.push(trebleChain); trimEffectQueue(currentChains, 10); }
@@ -1366,9 +1284,15 @@ function makeWavefront(kind, side, energy, bass, vocal, treble) {
         if (pool.length > 0) {
           const n = pool[(Math.random() * pool.length) | 0];
           const textPool = ['SYNC', 'FLOW', 'GRID', 'NODE', '0x' + Math.random().toString(16).slice(2, 6).toUpperCase(), 'DATA', 'LINK'];
-          floatingTexts.push({ x: n.x + (Math.random() - 0.5) * 100, y: n.y + (Math.random() - 0.5) * 70, text: textPool[(Math.random() * textPool.length) | 0], alpha: 1, life: 22 + Math.random() * 18 });
-          if (Math.random() < calmProfile.extraSaluteChance * mix(1.0, 0.66, calmProfile.calmBoost)) {
-            spawnSalute(n.x, n.y, 'auto', energy * 0.9, bass, vocal, treble, getXColor(n.x));
+          floatingTexts.push({
+            x: n.x + (Math.random() - 0.5) * 100,
+            y: n.y + (Math.random() - 0.5) * 70,
+            text: textPool[(Math.random() * textPool.length) | 0],
+            alpha: 1,
+            life: (12 + Math.random() * 8) * calmProfile.floatingTextSpawnLife
+          });
+          if (Math.random() < calmProfile.rippleExtraChance * mix(1.0, 0.66, calmProfile.calmBoost)) {
+            spawnRipple(n.x, n.y, 'auto', energy * 0.9, bass, vocal, treble);
           }
           if (Math.random() > mix(0.70, 0.93, calmProfile.calmBoost)) {
             const surge = makeCurrentChain('auto', energy, bass, vocal, treble, n.x, n.y);
@@ -1379,7 +1303,6 @@ function makeWavefront(kind, side, energy, bass, vocal, treble) {
 
       flash = Math.max(0, flash - 0.04 * globalSpeedMult);
       cssFilterPulse = Math.max(0, cssFilterPulse - 0.03 * globalSpeedMult);
-      glitchPulse = Math.max(0, glitchPulse - 0.06 * globalSpeedMult);
       lastBass = bass; lastTreble = treble;
 
       const spawnTargets = {
@@ -1486,36 +1409,45 @@ function makeWavefront(kind, side, energy, bass, vocal, treble) {
       });
 
       nodes = nodes.filter(n => !n.dead);
+
+      const aliveIds = new Set(nodes.map(n => n.id));
+      for (const [key, rec] of linkMemory) {
+        if (!aliveIds.has(rec.a.id) || !aliveIds.has(rec.b.id)) {
+          linkMemory.delete(key);
+        }
+      }
+
+      frameCount++;
+      if (frameCount % 60 === 0) {
+        for (const [key, rec] of linkMemory) {
+          if (rec.strength < 0.005 && rec.usage < 0.003) {
+            linkMemory.delete(key);
+          }
+        }
+      }
+
       const activeNodes = nodes.filter(n => n.activity > 0.18 && n.scale > 0.1);
       const seenPairs = new Set();
       const maxLinkDistance = Math.hypot(width, height) * 1.2;
 
       activeNodes.forEach((node, i) => {
-        const nodeBand = node.kind === 'bass' ? bass : node.kind === 'vocal' ? vocal : treble;
         for (let j = i + 1; j < activeNodes.length; j++) {
           const other = activeNodes[j];
           const dx = other.x - node.x, dy = other.y - node.y, dist = Math.hypot(dx, dy) || 1;
           const proximity = Math.max(0, 1 - dist / maxLinkDistance);
           if (proximity <= 0) continue;
 
-          const otherBand = other.kind === 'bass' ? bass : other.kind === 'vocal' ? vocal : treble;
           const sameKind = node.kind === other.kind;
-
           const wheelDrive = breakdownIntensity;
-          const nodeProfile = getBandProfile(node.kind);
-          const otherProfile = getBandProfile(other.kind);
           const nodeSignal = getNodeSignal(node.kind, bass, vocal, treble);
           const otherSignal = getNodeSignal(other.kind, bass, vocal, treble);
           const bandMean = (nodeSignal + otherSignal) * 0.5;
           const bandContrast = Math.abs(nodeSignal - otherSignal);
           const geoSpan = Math.abs(node.x - other.x) / Math.max(width, 1);
           const crossScreen = smoothstep(0.18, 0.82, geoSpan);
-          const spreadDrive = 0.72;
 
-          // Управление балансом: на низком значении рождаются более длинные мосты,
-          // на высоком — сеть становится локальнее и плотнее.
           const nearPriority = clampRange(CONFIG.linkNearPriority, 0.2, 3.5);
-          const locality = clamp01((nearPriority - 0.2) / 3.3); // 0 = длинные мосты, 1 = локальные связи
+          const locality = clamp01((nearPriority - 0.2) / 3.3);
           const bridgeBias = 1 - locality;
 
           const nearCurve = mix(0.72, 4.2, locality);
@@ -1555,7 +1487,6 @@ function makeWavefront(kind, side, energy, bass, vocal, treble) {
         if (!seenPairs.has(key)) { rec.usage *= 0.992; rec.strength *= 0.985; }
         else { rec.usage = Math.min(1, rec.usage + 0.01 * energy); }
         rec.age += 1;
-        if (rec.strength < 0.012 && rec.usage < 0.008) linkMemory.delete(key);
       }
 
       links.length = 0;
@@ -1598,22 +1529,22 @@ function makeWavefront(kind, side, energy, bass, vocal, treble) {
 
       for (let i = ripples.length - 1; i >= 0; i--) {
         const r = ripples[i];
-        r.r += r.speed;
-        r.alpha -= 0.013 * globalSpeedMult;
+        r.r += r.speed * globalSpeedMult;
+        r.alpha -= (r.decay || CONFIG.rippleDecay) * globalSpeedMult;
         if (r.alpha <= 0 || r.r > r.maxR) ripples.splice(i, 1);
       }
 
       floatingTexts.forEach(ft => {
-        ft.y -= 0.38 * globalSpeedMult + breakdownIntensity * 1.2;
-        ft.alpha -= 0.02 * globalSpeedMult;
-        ft.life -= globalSpeedMult;
+        ft.y -= (0.38 * globalSpeedMult + breakdownIntensity * 1.2) * calmProfile.floatingTextRise;
+        ft.alpha -= (0.012 + calmProfile.calmBoost * 0.01) * calmProfile.floatingTextAlphaDecay;
+        ft.life -= (0.20 + globalSpeedMult * 0.25) * calmProfile.floatingTextLifeDecay;
       });
       floatingTexts = floatingTexts.filter(ft => ft.life > 0 && ft.alpha > 0);
       trimEffectQueue(floatingTexts, 10);
 
       wavefronts.forEach(wf => {
         wf.x += wf.dir * wf.speed * globalSpeedMult;
-        wf.alpha -= (0.002 + wf.trail * 0.001) * globalSpeedMult;
+        wf.alpha -= 0.002 * globalSpeedMult;
         wf.glow -= 0.0012 * globalSpeedMult;
         wf.life -= 0.005 * globalSpeedMult;
       });
@@ -1638,7 +1569,6 @@ function makeWavefront(kind, side, energy, bass, vocal, treble) {
 
       const processParticle = (p, isPulse) => {
         let needsNewLink = false;
-
         if (!p.from || !p.to || p.from.dead || p.to.dead) {
           needsNewLink = true;
         } else {
@@ -1654,9 +1584,7 @@ function makeWavefront(kind, side, energy, bass, vocal, treble) {
             p.to = randLink.b;
             p.t = Math.random();
           } else {
-            p.from = null;
-            p.to = null;
-            p.linkAlpha = 0;
+            p.from = null; p.to = null; p.linkAlpha = 0;
             return;
           }
         }
@@ -1683,10 +1611,7 @@ function makeWavefront(kind, side, energy, bass, vocal, treble) {
             }
             p.to = chosen.a === p.from ? chosen.b : chosen.a;
           } else {
-            p.from = null;
-            p.to = null;
-            p.linkAlpha = 0;
-            return;
+            p.from = null; p.to = null; p.linkAlpha = 0; return;
           }
         }
 
@@ -1705,7 +1630,6 @@ function makeWavefront(kind, side, energy, bass, vocal, treble) {
 
         const scaleCombo = Math.min(p.from.scale, p.to.scale);
         const vis = getLinkVisuals(p.from, p.to, strength, energy, scaleCombo);
-
         p.hue = vis.hue;
         p.linkAlpha = vis.alpha;
         p.scale = scaleCombo;
@@ -1732,8 +1656,7 @@ function makeWavefront(kind, side, energy, bass, vocal, treble) {
       return { bass, vocal, treble, energy, beatPulse: Math.max(0, kickTimer / 10), snarePulse: Math.max(0, snareTimer / 7) };
     }
 
-    function drawNotebookGrid(motion) {
-      const calmProfile = getCalmProfile();
+    function drawNotebookGrid(motion, calmProfile) {
       const calmBoost = calmProfile.calmBoost;
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
@@ -1768,6 +1691,7 @@ function makeWavefront(kind, side, energy, bass, vocal, treble) {
     }
 
     function drawScene(motion) {
+      const calmProfile = getCalmProfile();
       const silence = clamp01(1 - Math.max(motion.energy, breakdownIntensity * 0.95) * 3.6);
       const eqLift = motion.energy * 0.28 + motion.vocal * 0.12;
       const stereoShift = (motion.treble - motion.bass) * width * 0.03;
@@ -1838,7 +1762,8 @@ function makeWavefront(kind, side, energy, bass, vocal, treble) {
         ctx.fillStyle = bandGrad;
         ctx.fillRect(wf.x - edgeWidth, 0, edgeWidth * 2, height);
 
-        const strandCount = wf.mode === 'flash' ? 3 : wf.mode === 'filament' ? 4 : 5;
+        const baseStrands = wf.mode === 'flash' ? 3 : wf.mode === 'filament' ? 4 : 5;
+        const strandCount = baseStrands + (wf.extraStrands || 0);
         for (let s = 0; s < strandCount; s++) {
           const strandPhase = wf.phase + s * 0.85;
           const strandAmp = (wf.amp * (0.18 + s * 0.08) + motion.energy * 9) * (0.6 + wf.trail * 0.6);
@@ -1870,7 +1795,7 @@ function makeWavefront(kind, side, energy, bass, vocal, treble) {
       });
       ctx.restore();
 
-      drawNotebookGrid(motion);
+      drawNotebookGrid(motion, calmProfile);
       ctx.globalCompositeOperation = 'lighter';
 
       beatBridges.forEach(b => {
@@ -1895,7 +1820,6 @@ function makeWavefront(kind, side, energy, bass, vocal, treble) {
         const pulseT = (chain.pulse + chain.phase * 0.08) % 1;
         const pulseIndex = pulseT * (pts.length - 1);
         const pulseBase = Math.floor(pulseIndex);
-        const pulseFrac = pulseIndex - pulseBase;
         const pulseNode = pts[Math.min(pts.length - 1, pulseBase)];
         const nextPulseNode = pts[Math.min(pts.length - 1, pulseBase + 1)] || pulseNode;
 
@@ -1935,49 +1859,13 @@ function makeWavefront(kind, side, energy, bass, vocal, treble) {
       });
 
       ripples.forEach(rip => {
+        const rippleAlpha = rip.alpha * calmProfile.rippleAlphaMult;
+        const rippleWidth = (2 + rippleAlpha * 7) * calmProfile.rippleScaleMult;
         ctx.beginPath();
         ctx.arc(rip.x, rip.y, rip.r, 0, Math.PI * 2);
-        ctx.lineWidth = 2 + rip.alpha * 7;
-        ctx.strokeStyle = `hsla(${(globalHueOffset + motion.treble * 20) % 360}, 100%, 72%, ${rip.alpha * 0.48})`;
+        ctx.lineWidth = rippleWidth;
+        ctx.strokeStyle = `hsla(${(globalHueOffset + motion.treble * 20) % 360}, 100%, 72%, ${rippleAlpha * 0.48})`;
         ctx.stroke();
-      });
-
-      bursts.forEach(b => {
-        const t = clamp01(b.r / Math.max(b.maxR, 1));
-        const source = b.kind || 'auto';
-        const ringCount = b.rings || (source === 'mouse' ? PANEL_STATE.mouseSaluteRings : source === 'beat' ? 3 : 2);
-        const coreRadius = Math.max(4, b.r * (0.14 + t * 0.08));
-        const outerRadius = b.r * (0.76 + t * 0.26);
-
-        ctx.save();
-        ctx.globalCompositeOperation = 'lighter';
-
-        const coreGrad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, outerRadius);
-        coreGrad.addColorStop(0, `hsla(${b.hue}, 100%, 94%, ${b.alpha * (source === 'mouse' ? 0.34 - t * 0.14 : 0.5 - t * 0.22)})`);
-        coreGrad.addColorStop(0.18, `hsla(${(b.hue + 12) % 360}, 100%, 80%, ${b.alpha * (source === 'mouse' ? 0.22 : 0.45)})`);
-        coreGrad.addColorStop(0.52, `hsla(${b.hue}, 100%, 68%, ${b.alpha * (source === 'mouse' ? 0.08 : 0.18)})`);
-        coreGrad.addColorStop(1, `hsla(${b.hue}, 100%, 62%, 0)`);
-        ctx.fillStyle = coreGrad;
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, outerRadius, 0, Math.PI * 2);
-        ctx.fill();
-
-        for (let rIdx = 0; rIdx < ringCount; rIdx++) {
-          const ringT = (rIdx + 1) / (ringCount + 0.5);
-          const rr = b.r * (0.72 + ringT * 0.95 + Math.sin(b.seed * 0.01 + time * 2.2 + rIdx) * 0.02);
-          ctx.lineWidth = 1.2 + rIdx * 0.9 + (source === 'mouse' ? 0.6 : 0);
-          ctx.strokeStyle = `hsla(${(b.hue + rIdx * 9) % 360}, 100%, ${72 + rIdx * 4}%, ${b.alpha * (0.40 - ringT * 0.08)})`;
-          ctx.beginPath();
-          ctx.arc(b.x, b.y, rr, 0, Math.PI * 2);
-          ctx.stroke();
-        }
-
-
-        ctx.fillStyle = `hsla(${b.hue}, 100%, 94%, ${b.alpha * 0.28})`;
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, coreRadius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
       });
 
       ctx.globalCompositeOperation = 'screen';
@@ -2194,7 +2082,9 @@ function makeWavefront(kind, side, energy, bass, vocal, treble) {
     }
 
     function animate() {
-      drawScene(updateScene(readAudio()));
+      const audioData = readAudio();
+      const motion = updateScene(audioData);
+      drawScene(motion);
       requestAnimationFrame(animate);
     }
 
@@ -2209,7 +2099,7 @@ function makeWavefront(kind, side, energy, bass, vocal, treble) {
         source = audioCtx.createMediaStreamSource(mediaStream);
         analyser = audioCtx.createAnalyser();
         analyser.fftSize = 2048;
-        analyser.smoothingTimeConstant = 0.45;
+        analyser.smoothingTimeConstant = 0.2;   // было 0.45, уменьшено для более быстрой реакции
         freqData = new Uint8Array(analyser.frequencyBinCount);
         source.connect(analyser);
         audioEnabled = true;
@@ -2222,10 +2112,9 @@ function makeWavefront(kind, side, energy, bass, vocal, treble) {
 
     canvas.addEventListener('mousedown', (e) => {
       if (!audioEnabled) return;
+      if (CONFIG.saluteFrequency <= 0) return;
       const rect = canvas.getBoundingClientRect(), clickX = e.clientX - rect.left, clickY = e.clientY - rect.top;
-      ripples.push({ x: clickX, y: clickY, r: 0, speed: 12 * globalSpeedMult, alpha: 1, maxR: width * 1.5 });
-      spawnSalute(clickX, clickY, 'mouse', Math.max(0.18, longTermEnergy + 0.08), lastBass, 0.5, lastTreble, getXColor(clickX));
-      trimEffectQueue(bursts, 18);
+      spawnRipple(clickX, clickY, 'mouse', Math.max(0.18, longTermEnergy + 0.08), lastBass, 0.5, lastTreble);
       const mouseChain = makeCurrentChain('mouse', Math.max(0.28, longTermEnergy + 0.12), lastBass, 0.5, lastTreble, clickX, clickY);
       if (mouseChain) { currentChains.push(mouseChain); trimEffectQueue(currentChains, 10); }
       nodes.forEach(n => {
